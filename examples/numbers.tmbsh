@@ -1,0 +1,7 @@
+# various number formats
+bin=%0b11
+$print($bin)
+hex=%0xFA
+$print($hex)
+oct=%0777
+$print($oct)

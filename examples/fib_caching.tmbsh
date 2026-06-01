@@ -1,0 +1,33 @@
+# so since this language is very flexible you can pretty much
+# do complex programming patterns like caching for example
+# not that complex but still
+
+cache={}
+def fib(n)
+    num=$n->float()
+    if a=$cache[$num]?
+        return $a
+    end
+    a=%0.0
+    b=%1.0
+    for in $num
+        c=$b->add($a)
+        a=$b
+        b=$c
+    end
+    @$cache[$num]=$a
+    return $a
+end
+begin=$time()
+max_number=%1000
+for i in $max_number
+    @$fib($i)
+end
+echo calculating $max_number fibonacci numbers without cache took $time()->sub($begin) seconds
+
+begin=$time()
+# and running it again should theoretically make it faster
+for i in $max_number
+   @$fib($i)
+end
+echo calculating $max_number fibonacci numbers with cache took $time()->sub($begin) seconds

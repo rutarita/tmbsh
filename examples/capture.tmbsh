@@ -1,0 +1,10 @@
+encoded=$(echo hello | base64)->strip()
+echo $encoded->size()
+$print($encoded)
+
+decoded_len=$(echo hello | base64 | base64 -d | wc)
+echo "wk results :" $decoded_len
+
+count=$(for i in %10 echo $i; end)
+echo $count->size()
+echo $count

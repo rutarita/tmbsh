@@ -1,0 +1,4 @@
+json=$(curl https://catfact.ninja/fact)->from_json()
+
+echo Here is a cat fact for today:
+echo $json[fact]

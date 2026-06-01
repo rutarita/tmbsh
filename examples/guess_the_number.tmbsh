@@ -1,0 +1,10 @@
+echo guess the number 1-10
+num=$randi(1 10)->str()
+guessed=$readline("input: ")
+if $num->eq?($guessed)
+    echo you guessed!
+else
+    echo you didnt guess
+end
+
+echo the correct number was $num

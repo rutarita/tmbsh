@@ -1,0 +1,45 @@
+echo Guess the file name from your home directory
+files=~->entries()
+random_file=$files[$randie(%0 $files->size())]
+word=$random_file->downcase()
+
+used_letters=^^
+
+def render_string
+    chars=[]
+    for c in $word
+        if $used_letters->has?($c)
+            @$chars->append($c)
+        else
+            @$chars->append("?")
+        end
+    end
+    return $chars->join(" ")
+end
+lives=%10
+while $true
+    inputted=$readline("Input letter: ")->downcase()
+    if !$inputted->size()->eq(%1)
+        echo Input exactly one character
+        continue
+    end
+    if $used_letters->has?($inputted)
+        echo This letter was already used
+        continue
+    end
+    @$used_letters->add($inputted)
+    rendered=$render_string()
+    echo "Lives: $lives"
+    echo $rendered
+    if $rendered->index("?")->is_a?(null)
+        echo congrats you won
+        break
+    else
+        lives=$lives->sub(1)
+        if $lives->eq(%0)
+            echo you lost
+            break
+        end
+    end
+end
+echo the correct answer was $random_file

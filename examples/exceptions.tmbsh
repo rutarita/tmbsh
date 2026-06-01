@@ -1,0 +1,20 @@
+a=4
+# causes MethodDoesNotExist exception
+# $a->magnificent()
+b=[]
+def foo
+    @$b->concat(%20)
+    t->magnificent()
+end
+
+# causes TypeError when calling $foo
+# $foo()
+# it does not get checked at parse time
+
+# causes ArgumentError
+# @^^->has(two item) # instead of one
+
+
+
+
+

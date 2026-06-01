@@ -1,0 +1,6 @@
+numbers=[1 2 3 4 5]
+letters=[a b c d e]
+
+for letter number in $zip($letters $numbers)
+    echo $letter and $number
+end

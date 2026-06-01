@@ -1,0 +1,37 @@
+echo ranges allow cool stuff
+for i in %-30..30
+    echo $i
+end
+
+echo it allows for slices
+arr=[apple buscuit fred sheldon fredrick stuart fifth bin]
+names=$arr[%2..5]
+$print($names)
+
+echo and indefinite slices
+everything_except_first=$arr[%1..]
+$print($everything_except_first)
+
+echo this is the same as "->dup()"
+dup=$arr[%..]
+$print($dup)
+echo will output just like
+$print($arr->dup())
+
+echo obviously string slices are allowed too
+str="hello world"
+hello=$str[%..4]
+world=$str[%6..]
+$print($hello $world)
+
+echo dynamically created ranges
+range=%0->range($arr->size()->sub(1)) # dynamic ranges
+$print($range)
+erange=%0->erange($arr->size()->sub(1))
+$print($erange)
+$print($arr[$range])
+$print($arr[$erange])
+echo dynamic indefinite ranges
+irange=$null->range(3)
+$print($irange)
+$print($arr[$irange])

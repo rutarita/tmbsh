@@ -1,0 +1,55 @@
+# tmsbh allows optional arguments in a function
+# after the first optional argument the rest must be optional too
+# this syntax is also allowed for lambda definition
+# if argument is not provided it becomes NULL aka $null
+def func(a b? c?)
+    if $b->is_a?(null)
+        echo b is null
+    end
+    if $c->is_a?(null)
+        echo c is null
+    end
+end
+echo abc
+$func(a b c)
+echo ab
+$func(a b)
+echo a
+$func(a)
+# splat argument can also be optional
+def func_splat(a b? *c?)
+    if $b->is_a?(null)
+        echo b is null
+    end
+    if $c->is_a?(null)
+        echo c is null
+    end
+end
+echo
+echo abc
+$func_splat(a b c)
+echo ab
+$func_splat(a b)
+echo a
+$func_splat(a)
+# all optional arguments are also possible
+def fully_optional(a? b? c?)
+    if $a->is_a?(null)
+        echo a is null
+    end
+    if $b->is_a?(null)
+        echo b is null
+    end
+    if $c->is_a?(null)
+        echo c is null
+    end
+end
+echo
+echo none
+$fully_optional()
+echo a
+$fully_optional(a)
+echo ab
+$fully_optional(a b)
+echo abc
+$fully_optional(a b c)

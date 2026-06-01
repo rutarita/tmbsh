@@ -1,0 +1,10 @@
+stuff=[apple cherry coconut]
+favorite_fruit=$stuff[4]?->orelse("no fruit")
+echo My favorite fruit is $favorite_fruit
+
+ages={john 40 bob 30}
+my_age=$ages[billy]?->orelse("no age")
+echo My age is $my_age
+
+echo As you can see you can do out of index access
+echo On non existant keys access without having to keys existance too

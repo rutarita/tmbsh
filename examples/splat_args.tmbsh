@@ -1,0 +1,7 @@
+def list(*args)
+    return $args
+end
+
+l=$list(hello goodbye almond eyes strayed maybe)
+$print($l->is_a?(list)->str())
+$print($l)

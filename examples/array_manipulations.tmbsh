@@ -1,0 +1,50 @@
+arr=[apple linux python john pencil free]
+
+ends_with_e=$arr->select(->(str) $str->ends_with?(e))
+$print($ends_with_e)
+
+sizes=$arr->map(->(str)$str->size())
+$print($sizes)
+
+shorties=$arr->reject(->(str)$str->size()->gt(4))
+$print($shorties)
+
+str_and_size=$arr->map(->(str) [$str $str->size()])
+$print($str_and_size)
+
+
+# if you were to run this in current directory it will work properly
+names_of_examples=*->map!(->(str)$str->chomp(.tmbsh))
+$print($names_of_examples)
+# filling arrays with resize and mapping every value
+math_stuff=[]->resize(100)->map!(->(_)$randi(-1000 1000))
+$print($math_stuff)
+# in-place operations
+$print( $math_stuff->map!( ->(num) $num->mul(5) ) )
+$print()
+$print($math_stuff->reject!(->(num) $num->lte(500)))
+$print(sum of all sizes)
+# reducing too
+# you can specify or not specify the initial value
+# otherwise it will be first element in the array
+# and will start iterating from second value
+res=$sizes->reduce(%0 ->(acc num) $acc->add($num))
+res_no=$sizes->reduce(->(acc num) $acc->add($num))
+# also can use built-in ->sum
+res_sum=$sizes->sum()
+$print($res "(its the same as $res_no and $res_sum)")
+mush=$arr->reduce("" ->(acc str) $acc->concat($str))
+$print(thats the total size of $mush)
+$print(but you can also mush stuff with '->join($sep)' method)
+$print($arr->join())
+
+# you can also find specific values with a functions
+matching=$arr->find(->(str) $str->size()->eq(%4))
+$print($matching)
+
+# and one of the best is partition
+parts=$arr->partition(->(str) $str->starts_with?(p))
+start_with_p=$parts[0]
+dont_start_with_p=$parts[1]
+echo "Start with p:\t" $start_with_p
+echo "Don't start with p:\t" $dont_start_with_p

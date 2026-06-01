@@ -1,0 +1,4 @@
+data=$(curl https://wttr.in/Istanbul)
+
+echo "Weather in Istanbul (Not Constantinople):"
+echo $data

@@ -1,0 +1,12 @@
+echo Methods on String:
+echo $dir("str")
+echo Methods on Array:
+echo $dir([])
+echo Methods on Dictionary:
+echo $dir({})
+echo Methods on Set:
+echo $dir(^^)
+echo Methods on Number:
+echo $dir(%0)
+echo Methods on Function:
+echo $dir($dir)

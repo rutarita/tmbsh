@@ -1,0 +1,3 @@
+echo my home is ~
+echo config folder is usually ~/.config
+echo "here are files there:" ~/*

@@ -1,0 +1,2 @@
+input=$readline("you can input now!: ")
+echo You inputted $input

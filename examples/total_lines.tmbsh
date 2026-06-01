@@ -1,0 +1,9 @@
+# you can obviously make it without loops its just a demonstration
+
+res=%0
+for i in *
+    lines=$(wc $i --lines --total only)
+    res=$res->add($lines->num())
+end
+
+echo total lines: $res

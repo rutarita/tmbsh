@@ -1,0 +1,9 @@
+# walks almost (?) like in python
+# do not change dirs when iterating though, please?
+
+for path dirs files in ~/Pictures->walk()
+    echo "path: " $path
+    echo "dirs: " $dirs
+    echo "files: " $files
+    echo
+end

@@ -1,0 +1,5 @@
+names=[josh erik carter bob]
+
+for i name in $enumerate($names 1)
+    echo my number $i friend is $name
+end
