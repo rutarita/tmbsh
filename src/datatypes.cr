@@ -182,7 +182,7 @@ module TMBSH
     end
 
     def to_s : ::String
-      "<#{self.class} iterator>"
+      "<#{self.class.to_s.lchop("TMBSH::")} iterator>"
     end
 
     def to_a : ::Array(Variant)
