@@ -2,7 +2,7 @@ require "json"
 require "./exceptions"
 module TMBSH
   macro abstract_method(name, &body)
-    Function.new(self.class.to_s.lchop("TMBSH::"), {{name}}, ->(args : ::Array(Variant)) : Variant? {
+    Function.new(self.to_s.lchop("TMBSH::"), {{name}}, ->(args : ::Array(Variant)) : Variant? {
     this = args[0]
     {{body.body}}
     })
