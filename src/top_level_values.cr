@@ -17,19 +17,19 @@ module TMBSH
   end
 
   class EnumerateIterator < TMBSH::Iterator
-    @idx : Int32
+    @idx : Int64
     @iter : Iterator
     property idx
     property iter
 
-    def initialize(iterable : Variant, offset : Int32 = 0)
+    def initialize(iterable : Variant, offset : Int64 = 0)
       @idx = offset
       @iter = iterable.iter_init
     end
 
     def iter_next : Variant?
       if val = @iter.iter_next
-        arr = Array.new([Int.new(@idx.to_i), val] of Variant)
+        arr = Array.new([Int.new(@idx), val] of Variant)
         @idx += 1
         arr
       end
@@ -88,9 +88,9 @@ module TMBSH
     raise "Expected at one argument and optional offset argument" if args.empty? || args.size > 2
     offset = args[1]?
     if offset
-      offset = offset.to_f64.to_i
+      offset = offset.to_i64
     else
-      offset = 0
+      offset = 0_i64
     end
     EnumerateIterator.new(args[0], offset)
   end
@@ -116,60 +116,59 @@ module TMBSH
   end
 
   RAND_FUNCTION = TMBSH.tl_function do
-    if args.empty?
-      num = rand
-    elsif args.size == 1
-      num = rand(args[0].to_f64)
-    elsif args.size == 2
-      num = rand(args[0].to_f64..args[1].to_f64)
-    else
-      raise "Expected 2 arguments at most"
-    end
-    Float.new(num)
+    num = case args.size
+      when 0 then rand(Int64::MIN..Int64::MAX)
+      when 1 then rand(args[0].to_i64)
+      when 2 then rand(args[0].to_i64..args[1].to_i64)
+      else raise "Expected 2 arguments at most"
+      end
+    Float.new(num.to_f64)
   end
 
   RANDI_FUNCTION = TMBSH.tl_function do
-    if args.empty?
-      num = rand(Int64::MIN..Int64::MAX)
-    elsif args.size == 1
-      num = rand(args[0].to_i64)
-    elsif args.size == 2
-      num = rand(args[0].to_i64..args[1].to_i64)
-    else
-      raise "Expected 2 arguments at most"
-    end
+      num = case args.size
+      when 0 then rand(Int64::MIN..Int64::MAX)
+      when 1 then rand(args[0].to_i64)
+      when 2 then rand(args[0].to_i64..args[1].to_i64)
+      else raise "Expected 2 arguments at most"
+      end
     Int.new(num.to_f64)
   end
 
   RANDIE_FUNCTION = TMBSH.tl_function do
-    if args.empty?
-      num = rand(Int32::MIN..Int32::MAX)
-    elsif args.size == 1
-      num = rand(args[0].to_i64)
-    elsif args.size == 2
-      num = rand(args[0].to_i64...args[1].to_i64)
-    else
-      raise "Expected 2 arguments at most"
-    end
-    Float.new(num.to_f64)
+    num = case args.size
+      when 0 then rand(Int64::MIN..Int64::MAX)
+      when 1 then rand(args[0].to_i64)
+      when 2 then rand(args[0].to_i64...args[1].to_i64)
+      else raise "Expected 2 arguments at most"
+      end
+    Int.new(num.to_f64)
   end
 
   MAX_FUNCTION = TMBSH.tl_function do
-    best = 0.0
+    best = nil
+    best_val = -Float64::INFINITY
     args.each do |num|
-      num = num.to_f64
-      best = num if num > best
+      val = num.to_f64
+      if val > best_val
+      best = num
+      best_val = val
+      end
     end
-    Float.new(best)
+    best || raise "Unexpected error"
   end
 
   MIN_FUNCTION = TMBSH.tl_function do
-    best = 0.0
+    best = nil
+    best_val = Float64::INFINITY
     args.each do |num|
-      num = num.to_f64
-      best = num if num < best
+      val = num.to_f64
+      if val < best_val
+      best = num
+      best_val = val
+      end
     end
-    Float.new(best)
+    best || raise "Unexpected error"
   end
 
   TIME_FUNCTION = TMBSH.tl_function do
