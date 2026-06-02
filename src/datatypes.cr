@@ -16,18 +16,6 @@ module TMBSH
     })
   end
 
-  macro dup_method
-    TMBSH.method do
-      this.dup
-    end
-  end
-
-  macro clone_method
-    TMBSH.method do
-      this.clone
-    end
-  end
-
   protected def self.variant_from_json(json : JSON::Any) : Variant
     raw = json.raw
     case raw
