@@ -783,7 +783,7 @@ module TMBSH
 
     @value : ::Array(Variant)
     SIZE_METHOD = TMBSH.method("size") do
-      Float.new(this.@value.size.to_f64)
+      Int.new(this.@value.size)
     end
     APPEND_METHOD = TMBSH.method("append") do
       args[1..].each do |item|
@@ -1553,7 +1553,7 @@ module TMBSH
     end
 
     SIZE_METHOD = TMBSH.method("size") do
-      Float.new(this.@value.size.to_f64)
+      Int.new(this.@value.size)
     end
     STRIP_METHOD = TMBSH.method("strip") do
       if v = args[1]?
