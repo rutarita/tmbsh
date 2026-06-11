@@ -1,0 +1,12 @@
+def str_to_bin(str)
+    arr=$str->encode->map(->(s) $s->str(2))
+    return $arr->join(' ')
+end
+
+def str_to_hex(str)
+    arr=$str->encode->map(->(s) $s->str(16))
+    return $arr->join(' ')
+end
+
+echo $str_to_bin("hello world")
+echo $str_to_hex("hello world")
