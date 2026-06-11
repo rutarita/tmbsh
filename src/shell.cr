@@ -1,8 +1,11 @@
 require "./readline.cr"
+require "./interpreter.cr"
 module TMBSH
 class Shell
 
   HISTORY_FILE_NAME = ".tmbsh_history"
+
+  @interpreter : Interpreter
 
   def initialize
     begin
@@ -17,10 +20,21 @@ class Shell
       end
     rescue
     end
+    @interpreter = Interpreter.new
   end
 
   def mainloop
-
+    loop do
+      input = ReadLine.readline("$ ")
+      if input
+        if !input.empty?
+          ReadLine.add_history(input)
+          @interpreter.execute_string(input)
+        end
+      else
+        break
+      end
+    end
   end
 end
 end
