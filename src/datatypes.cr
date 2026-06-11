@@ -837,7 +837,7 @@ module TMBSH
 
     {% for i in ["sum", "sort", "sort_num"] %}
     {{i.id.upcase}}_METHOD = TMBSH.method("{{i.id.upcase}}") do
-      raise ArgumentError.new("Expected no arguments") unless args.size == 0
+      raise ArgumentError.new("Expected no arguments") unless args.size == 1
       this.{{i.id}}
     end
     {% end %}
@@ -1692,7 +1692,7 @@ module TMBSH
 
     {% for i in ["downcase", "upcase", "titleize", "camelcase", "underscore", "capitalize"] %}
       {{i.id.upcase}}_METHOD = TMBSH.method("{{i.id.upcase}}") do
-        raise ArgumentError.new("Expected no arguments")
+        raise ArgumentError.new("Expected no arguments") unless args.size == 1
         String.new(this.@value.{{i.id}})
       end
     {% end %}
