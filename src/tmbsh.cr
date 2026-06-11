@@ -1,4 +1,5 @@
 require "./shell.cr"
+require "./interpreter.cr"
 
-shell = TMBSH.new
+shell = TMBSH::Shell.new
 shell.mainloop
