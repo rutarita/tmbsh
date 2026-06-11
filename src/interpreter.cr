@@ -11,6 +11,7 @@ module TMBSH
       @global : ::Hash(::String, Variant) = {} of ::String => Variant
       @constants : ::Hash(::String, Variant) = TOP_LEVEL_VALUES
       @strict : ::Bool = false
+      property strict
       alias BuiltinCommand = ::Array(ValueNode) -> Nil
       @builtins : ::Hash(::String, BuiltinCommand) = {} of ::String => BuiltinCommand
 
@@ -91,6 +92,16 @@ module TMBSH
 
     @variable_stack : VariableStack
     @aliases : Hash(::String, ::String) = {} of ::String => ::String
+    @strict : ::Bool = false
+
+    def strict
+      @strict
+    end
+
+    def strict=(val : ::Bool)
+      @strict = val
+      @variable_stack.strict = val
+    end
 
     def initialize(constants_from_env : ::Bool = true)
       @variable_stack = VariableStack.new
@@ -706,11 +717,16 @@ module TMBSH
       execute_string(string)
     end
 
+    def reset
+      @variable_stack = VariableStack.new
+      @variable_stack.strict = @strict
+    end
+
   end
 end
 
-interpreter = TMBSH::Interpreter.new
-interpreter.execute_file(ARGV[0])
+# interpreter = TMBSH::Interpreter.new
+# interpreter.execute_file(ARGV[0])
 # while true
 #   mem = IO::Memory.new
 #   while str = gets
