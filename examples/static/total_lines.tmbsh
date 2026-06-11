@@ -3,7 +3,7 @@
 res=%0
 for i in *
     lines=$(wc $i --lines --total only)
-    res=$res->add($lines->num())
+    res=$res->add($lines->int())
 end
 
 echo total lines: $res

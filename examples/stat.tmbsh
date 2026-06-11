@@ -1,5 +1,0 @@
-file=stat.tmbsh
-stat=$file->stat
-$print($stat)
-$print($stat[permissions]->str(8))
-$print($stat[permissions]->and(120))

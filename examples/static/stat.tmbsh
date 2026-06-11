@@ -1,0 +1,9 @@
+file=*[0]
+if $file->file?
+    echo cannot stat a not file
+else
+    stat=$file->stat
+    $print($stat)
+    $print($stat[permissions]->str(8))
+    $print($stat[permissions]->and(120))
+end

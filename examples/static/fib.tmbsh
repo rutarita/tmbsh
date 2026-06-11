@@ -1,12 +1,12 @@
 def fib(n)
-    num=$n->num()
-    if $num->eq?(%1)
-        return %1
-    elif $num->eq?(%0)
-        return %0
+    num=$n->float()
+    if $num->eq?(%1.0)
+        return %1.0
+    elif $num->eq?(%0.0)
+        return %0.0
     end
-    a=%0
-    b=%1
+    a=%0.0
+    b=%1.0
     for i in $num
         c=$b->add($a)
         a=$b
