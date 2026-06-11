@@ -94,6 +94,11 @@ module TMBSH
     def to_i : Int32
       to_i64.to_i
     end
+
+    def to_u8 : UInt8
+      to_i.to_u8
+    end
+
     abstract def to_s : ::String
     abstract def to_a : ::Array(Variant)
 
@@ -923,6 +928,10 @@ module TMBSH
       this.partition(fn)
     end
 
+    DECODE_METHOD = TMBSH.method("decode") do
+      this.decode
+    end
+
     @@methods = {
       "size"     => SIZE_METHOD,
       "append"   => APPEND_METHOD,
@@ -952,6 +961,9 @@ module TMBSH
       "includes?"=> INCLUDES_METHOD,
       "has"      => INCLUDES_METHOD,
       "has?"      => INCLUDES_METHOD,
+
+      "decode" => DECODE_METHOD,
+
       "to_json"  => TO_JSON_METHOD,
       "is_a?"    => IS_A_METHOD,
       "iter"     => ITER_METHOD,
@@ -1197,6 +1209,14 @@ module TMBSH
       a = Array.new(a)
       b = Array.new(b)
       Array.new([a, b] of Variant)
+    end
+
+    def decode : String
+      arr = @value.map {|v| v.to_u8}
+      slice = Bytes.new(arr.size) do |i|
+        arr[i]
+      end
+      String.new(::String.new(slice))
     end
   end
 
@@ -1724,14 +1744,15 @@ module TMBSH
     end
 
     INT_METHOD = TMBSH.method("int") do
-      if res = this.@value.to_i64?
-      Int.new(this.@value.to_i64)
+      base = (args[1]?.try &.to_i64) || 10
+      if res = this.@value.to_i64?(base)
+      Int.new(res)
       end
     end
 
     FLOAT_METHOD = TMBSH.method("float") do
       if res = this.@value.to_f64?
-      Float.new(this.@value.to_f64)
+      Float.new(res)
       end
     end
 
@@ -1740,7 +1761,12 @@ module TMBSH
       this.stat
     end
 
+    ENCODE_METHOD = TMBSH.method("encode") do
+      this.encode
+    end
+
     @@methods = {
+      # string operations
       "size"         => SIZE_METHOD,
       "concat"       => CONCAT_METHOD,
       "join"         => JOIN_METHOD,
@@ -1769,19 +1795,21 @@ module TMBSH
       "index"        => INDEX_METHOD,
       "chars"        => CHARS_METHOD,
       "entries"      => ENTRIES_METHOD,
+      "str"          => STR_METHOD,
+      "reverse"      => REVERSE_METHOD,
+      "encode"       => ENCODE_METHOD,
+      "float"          => FLOAT_METHOD,
+      "int"          => INT_METHOD,
+      # filesystem methods
+      "dir?"         => IS_DIR_METHOD,
+      "file?"        => IS_FILE_METHOD,
+      "absolute"     => ABSOLUTE_METHOD,
+      "abs"          => ABSOLUTE_METHOD,
       "walk"         => WALK_METHOD,
       "stat"         => STAT_METHOD,
       "info"         => STAT_METHOD,
       "read"         => READ_METHOD,
       "exists?"      => EXISTS_METHOD,
-      "str"          => STR_METHOD,
-      "float"          => FLOAT_METHOD,
-      "int"          => INT_METHOD,
-      "reverse"      => REVERSE_METHOD,
-      "dir?"         => IS_DIR_METHOD,
-      "file?"        => IS_FILE_METHOD,
-      "absolute"     => ABSOLUTE_METHOD,
-      "abs"          => ABSOLUTE_METHOD,
       "to_json"      => TO_JSON_METHOD,
       "from_json"    => FROM_JSON_METHOD,
       "is_a?"        => IS_A_METHOD,
@@ -1925,6 +1953,10 @@ module TMBSH
         String.new("size")      => Int.new(info.size),
       } of Variant => Variant
       Dictionary.new(info_hash)
+    end
+
+    def encode : Array
+      Array.new(@value.to_slice.to_a.map { |v| Int.new(v).as(Variant)})
     end
   end
 
