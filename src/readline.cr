@@ -1,6 +1,13 @@
 @[Link("readline")]
 lib LibReadLine
+  alias HistData = Void*
+  struct HIST_ENTRY
+    line : UInt8*
+    timestamp : UInt8*
+    data : HistData
+  end
   fun readline(prompt : UInt8*) : UInt8*
+  fun history_list : HIST_ENTRY**
   fun add_history(line : UInt8*) : Void
   fun rl_bind_key(key : LibC::Int, function : LibC::Int, LibC::Int -> LibC::Int) : LibC::Int
 end
@@ -21,5 +28,15 @@ module ReadLine
   def bind_key(key : Char, function : Int32, Int32 -> Int32)
     LibReadLine.rl_bind_key(key.ord, function)
   end
-end
 
+  def history_list : ::Array(::String)?
+    ptr = LibReadLine.history_list
+    return if ptr.null?
+    size = (0..).each do |i|
+      if ptr[i].null?
+        break i
+      end
+    end
+    ptr.to_slice(size).map { |entry| ::String.new(entry.value.line) }.to_a
+  end
+end
