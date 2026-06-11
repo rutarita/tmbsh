@@ -12,8 +12,6 @@ module TMBSH
       @constants : ::Hash(::String, Variant) = TOP_LEVEL_VALUES
       @strict : ::Bool = false
       property strict
-      alias BuiltinCommand = ::Array(ValueNode) -> Nil
-      @builtins : ::Hash(::String, BuiltinCommand) = {} of ::String => BuiltinCommand
 
       # @scope_cache : ::Hash(::String, Int32) = {} of ::String => Int32
 
@@ -89,7 +87,8 @@ module TMBSH
         end
       end
     end
-
+    alias BuiltinCommand = Interpreter, IO, IO, IO, ::Array(ValueNode) -> Result
+    @builtins : Hash(::String, BuiltinCommand) = {} of ::String => BuiltinCommand
     @variable_stack : VariableStack
     @aliases : Hash(::String, ::String) = {} of ::String => ::String
     @strict : ::Bool = false
