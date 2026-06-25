@@ -87,6 +87,11 @@ module TMBSH
       end
     end
 
+    TRUTHY_METHOD = TMBSH.abstract_method("truthy?") do
+      raise "truthy? method expects no arguments" unless args.size == 1
+      this.truthy? ? TRUE : FALSE
+    end
+
     abstract def call(args : ::Array(Variant)) : Variant
     abstract def to_f64 : Float64
 
@@ -152,20 +157,99 @@ module TMBSH
     end
   end
 
+
   abstract class Iterator < Variant
+
+    private module IteratorBoilerplate
+      @iterator : Iterator
+      @func : Function
+      def initialize(iterator : Iterator, func : Function)
+        @iterator = iterator
+        @func = func
+      end
+      def clone : self
+        self.class.new(@iterator.clone, @func)
+      end
+
+      def dup : self
+        self.class.new(@iterator.dup, @func)
+      end
+    end
+
+    class MapIterator < Iterator
+      include IteratorBoilerplate
+
+      def iter_next : Variant?
+        val = @iterator.iter_next
+        return unless val
+        @func.call([val] of Variant)
+      end
+
+    end
+
+    class SelectIterator < Iterator
+
+      include IteratorBoilerplate
+
+      def iter_next : Variant?
+        while true
+          val = @iterator.iter_next
+          return unless val
+          if @func.call([val] of Variant).truthy?
+            return val
+          end
+        end
+      end
+    end
+    class RejectIterator < Iterator
+
+      include IteratorBoilerplate
+
+      def iter_next : Variant?
+        while true
+          val = @iterator.iter_next
+          return unless val
+          unless @func.call([val] of Variant).truthy?
+            return val
+          end
+        end
+      end
+    end
+
+
     NEXT_METHOD = TMBSH.method("next") do
       this.iter_next || NULL
     end
     TO_A_METHOD = TMBSH.method("to_a") do
       this.to_sharr
     end
+    {% for itertype in ["map", "select", "reject"] %}
+      {{itertype.id.upcase}}_METHOD = TMBSH.method({{itertype}}) do
+        func = args[1]?
+        raise "Expected 1 argument that is a function" unless args.size == 2 && func.is_a?(Function)
+        this.{{itertype.id}}(func)
+      end
+    {% end %}
+
+    FOLD_METHOD = TMBSH.method("fold") do
+      into = args[1]?
+      func = args[2]?
+      raise "Expected 1 collector argument and second Function argument" unless into && func.is_a?(Function)
+      this.fold(into, func)
+    end
+
     @@methods = {
       "next"   => NEXT_METHOD,
       "to_a"   => TO_A_METHOD,
       "eq?"    => EQ_METHOD,
       "str"    => STR_METHOD,
-      "orelse" => ORELSE_METHOD,
+      "map"    => MAP_METHOD,
+      "select" => SELECT_METHOD,
+      "reject" => REJECT_METHOD,
+      "fold"   => FOLD_METHOD,
 
+      "orelse" => ORELSE_METHOD,
+      "truthy?" => TRUTHY_METHOD,
       "dup"   => DUP_METHOD,
       "clone" => CLONE_METHOD,
     } of ::String => Function
@@ -239,6 +323,20 @@ module TMBSH
     def truthy? : ::Bool
       true
     end
+
+    {% for itertype in ["map", "select", "reject"]%}
+      def {{itertype.id}}(func : Function)
+        {{itertype.id.titleize}}Iterator.new(self, func)
+      end
+    {% end %}
+
+    def fold(into : Variant, func : Function)
+      each do |i|
+        func.call([into, i] of Variant)
+      end
+      into
+    end
+
   end
 
   macro num_type_def(name,num_type, conversion)
@@ -454,11 +552,12 @@ module TMBSH
       "er"          => ERANGE_METHOD,
       "to"          => TO_METHOD,
       "toe"         => TOE_METHOD,
+
       "is_a?"       => IS_A_METHOD,
       "eq?"         => EQ_METHOD,
       "eq"          => EQ_METHOD,
       "orelse"      => ORELSE_METHOD,
-
+      "truthy?" => TRUTHY_METHOD,
       "dup"   => DUP_METHOD,
       "clone" => CLONE_METHOD,
     } of ::String => Function
@@ -654,10 +753,11 @@ module TMBSH
       "to_a"   => TO_A_METHOD,
       "iter"   => ITER_METHOD,
       "str"    => STR_METHOD,
+
+      "truthy?" => TRUTHY_METHOD,
       "is_a?"  => IS_A_METHOD,
       "eq?"    => EQ_METHOD,
       "orelse" => ORELSE_METHOD,
-
       "dup"   => DUP_METHOD,
       "clone" => CLONE_METHOD,
     } of ::String => Function
@@ -965,14 +1065,14 @@ module TMBSH
       "decode" => DECODE_METHOD,
 
       "to_json"  => TO_JSON_METHOD,
+
       "is_a?"    => IS_A_METHOD,
       "iter"     => ITER_METHOD,
+      "truthy?" => TRUTHY_METHOD,
       "eq?"      => EQ_METHOD,
-      "eq"       => EQ_METHOD,
       "sort"     => SORT_METHOD,
       "sort_num" => SORT_NUM_METHOD,
       "orelse"   => ORELSE_METHOD,
-
       "dup"   => DUP_METHOD,
       "clone" => CLONE_METHOD,
     } of ::String => Function
@@ -1336,11 +1436,12 @@ module TMBSH
       "proper_superset_of?" => PROPER_SUPERSET_OF_METHOD,
       "to_a"       => TO_A_METHOD,
       "clear"      => CLEAR_METHOD,
+
       "is_a?"      => IS_A_METHOD,
       "eq?"        => EQ_METHOD,
       "str"        => STR_METHOD,
       "orelse"     => ORELSE_METHOD,
-
+      "truthy?" => TRUTHY_METHOD,
       "dup"   => DUP_METHOD,
       "clone" => CLONE_METHOD,
     } of ::String => Function
@@ -1812,11 +1913,12 @@ module TMBSH
       "exists?"      => EXISTS_METHOD,
       "to_json"      => TO_JSON_METHOD,
       "from_json"    => FROM_JSON_METHOD,
+
       "is_a?"        => IS_A_METHOD,
       "iter"         => ITER_METHOD,
       "eq?"          => EQ_METHOD,
       "orelse"       => ORELSE_METHOD,
-
+      "truthy?" => TRUTHY_METHOD,
       "dup"   => DUP_METHOD,
       "clone" => CLONE_METHOD,
     } of ::String => Function
@@ -2057,11 +2159,12 @@ module TMBSH
       "to_json"    => TO_JSON_METHOD,
       "invert"     => INVERT_METHOD,
       "pairs"      => PAIRS_METHOD,
-      "is_a?"      => IS_A_METHOD,
       "iter"       => ITER_METHOD,
+
+      "is_a?"      => IS_A_METHOD,
       "eq?"        => EQ_METHOD,
       "orelse"     => ORELSE_METHOD,
-
+      "truthy?" => TRUTHY_METHOD,
       "dup"   => DUP_METHOD,
       "clone" => CLONE_METHOD,
     } of ::String => Function
@@ -2200,11 +2303,12 @@ module TMBSH
       "erange" => ERANGE_METHOD,
       "r"      => RANGE_METHOD,
       "er"     => ERANGE_METHOD,
+
       "is_a?"  => IS_A_METHOD,
       "eq?"    => EQ_METHOD,
       "str"    => STR_METHOD,
       "orelse" => ORELSE_METHOD,
-
+      "truthy?" => TRUTHY_METHOD,
       "dup"   => DUP_METHOD,
       "clone" => CLONE_METHOD,
     } of ::String => Function
@@ -2316,11 +2420,12 @@ module TMBSH
     @@methods = {
       "or"     => OR_METHOD,
       "and"    => AND_METHOD,
+      "str"    => STR_METHOD,
+
       "is_a?"  => IS_A_METHOD,
       "eq?"    => EQ_METHOD,
-      "str"    => STR_METHOD,
       "orelse" => ORELSE_METHOD,
-
+      "truthy?" => TRUTHY_METHOD,
       "dup"   => DUP_METHOD,
       "clone" => CLONE_METHOD,
     } of ::String => Function
@@ -2412,8 +2517,9 @@ module TMBSH
       "eq?"    => EQ_METHOD,
       "str"    => STR_METHOD,
       "bind"   => BIND_METHOD,
-      "orelse" => ORELSE_METHOD,
 
+      "orelse" => ORELSE_METHOD,
+      "truthy?" => TRUTHY_METHOD,
       "dup"   => DUP_METHOD,
       "clone" => CLONE_METHOD,
     } of ::String => Function
@@ -2539,11 +2645,12 @@ module TMBSH
 
     @@methods = {
 
+      "str"    => STR_METHOD,
+
       "is_a?"  => IS_A_METHOD,
       "eq?"    => EQ_METHOD,
-      "str"    => STR_METHOD,
       "orelse" => ORELSE_METHOD,
-
+      "truthy?" => TRUTHY_METHOD,
       "dup"   => DUP_METHOD,
       "clone" => CLONE_METHOD,
     } of ::String => Function
@@ -2638,10 +2745,11 @@ module TMBSH
       "float"    => FLOAT_METHOD,
       "int"    => INT_METHOD,
       "str"    => STR_METHOD,
+
       "is_a?"  => IS_A_METHOD,
       "eq?"    => EQ_METHOD,
       "orelse" => ORELSE_METHOD,
-
+      "truthy?" => TRUTHY_METHOD,
       "dup"   => DUP_METHOD,
       "clone" => CLONE_METHOD,
     } of ::String => Function
