@@ -1,0 +1,10 @@
+# we are getting rusty with these ones
+# iterations are lazy so sometimes it might be better
+# than doing operations on collected arrays
+items=[7 big something idk]
+# map stuff
+echo $items->iter->map(->(s) $s->upper)->to_a
+# fold into other values
+$print($items->iter->fold({} ->(acc s) $acc[$s]=$s->size))
+# filtering
+$print($items->iter->map(->(s) $s->int)->select(->(n) $n->truthy?)->to_a)
