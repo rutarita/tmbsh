@@ -8,3 +8,6 @@ echo $items->iter->map(->(s) $s->upper)->to_a
 $print($items->iter->fold({} ->(acc s) $acc[$s]=$s->size))
 # filtering
 $print($items->iter->map(->(s) $s->int)->select(->(n) $n->truthy?)->to_a)
+
+# this is useful with iteration on directories per say
+$print(~->iterdir->map(->(s) $s->upper)->to_a)
