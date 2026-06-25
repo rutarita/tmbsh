@@ -1623,6 +1623,29 @@ module TMBSH
       end
     end
 
+    class DirIterator < Iterator
+
+      @dir_iter : ::Iterator(::String)
+
+      def initialize(path : ::String | Path)
+        @dir_iter =  Dir.new(path).each_child
+      end
+
+      def clone : self
+        self
+      end
+
+      def dup : self
+        self
+      end
+
+      def iter_next : Variant?
+        val = @dir_iter.next
+        return val.is_a?(::String) ? String.new(val) : nil
+      end
+
+    end
+
     class WalkIterator < Iterator
       @next_dirs : ::Deque(::Array(Path)) = Deque(::Array(Path)).new
       def initialize(path : ::String | Path)
@@ -1708,6 +1731,11 @@ module TMBSH
     ENTRIES_METHOD = TMBSH.method("entries") do
       this.entries
     end
+
+    ITERDIR_METHOD = TMBSH.method("iterdir") do
+      this.iterdir
+    end
+
     REVERSE_METHOD = TMBSH.method("reverse") do
       String.new(this.@value.reverse)
     end
@@ -1911,6 +1939,8 @@ module TMBSH
       "info"         => STAT_METHOD,
       "read"         => READ_METHOD,
       "exists?"      => EXISTS_METHOD,
+      "iterdir"      => ITERDIR_METHOD,
+
       "to_json"      => TO_JSON_METHOD,
       "from_json"    => FROM_JSON_METHOD,
 
@@ -2059,6 +2089,12 @@ module TMBSH
 
     def encode : Array
       Array.new(@value.to_slice.to_a.map { |v| Int.new(v).as(Variant)})
+    end
+
+    def iterdir
+      if Dir.exists?(@value)
+        DirIterator.new(@value)
+      end
     end
   end
 
