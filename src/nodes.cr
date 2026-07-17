@@ -1,5 +1,6 @@
 require "./interpreter"
 require "./exceptions"
+
 module TMBSH
   class Interpreter
     class VariableRef
@@ -140,6 +141,7 @@ module TMBSH
 
     abstract class ValueNode < Node
       @actions : ::Deque(Action) = Deque(Action).new
+      property actions
 
       def add_action(action : Action)
         @actions << action
@@ -170,12 +172,8 @@ module TMBSH
     class SingleValueNode < ValueNode
       @value : Variant | VariableRef
 
-      def initialize(val : Variant)
+      def initialize(val : Variant | VariableRef)
         @value = val
-      end
-
-      def initialize(varref : VariableRef)
-        @value = varref
       end
 
       def evaluate(interpreter : Interpreter) : Variant
@@ -225,6 +223,10 @@ module TMBSH
       @parts : ::Array(ExpansionType | ValueNode | ::String) = [] of ExpansionType | ValueNode | ::String
       @absolute : ::Bool = false
       @path_dir_end : ::Bool = false
+
+      def empty?
+        @parts.empty?
+      end
 
       private def expand_path(dir_path : Path?, pattern : Regex | ::String, dirs_only : ::Bool) : ::Array(Path)?
         if dir_path
@@ -686,19 +688,56 @@ module TMBSH
     end
 
     class CaptureCommandNode < ValueNode
-      @statements : ::Array(StatementNode)
+      # @statements : ::Array(StatementNode)
+      @body : StatementBlockNode
+      @chomp : ::Bool = true
+      @return_status : ::Bool = false
+      @collect_array : ::Bool = false
 
-      def initialize(statements : ::Array(StatementNode))
-        @statements = statements
+      # def initialize(statements : ::Array(StatementNode))
+      #   @statements = statements
+      # end
+
+      def initialize(body : StatementBlockNode)
+        @body = body
+      end
+
+      private def capture(interpreter)
+        mem = IO::Memory.new
+        # @statements.each do |statement|
+        #   statement.execute(interpreter, mem)
+        # end
+        @body.execute(interpreter, mem)
+        str = mem.to_s
+        str = str.chomp if @chomp
+        var = String.new(str)
+        apply_actions(var, interpreter)
+      end
+
+      private def capture_status(interpreter)
+        res = @body.execute(interpreter, :Close, :Close)
+        if res.is_a?(CommandFinish)
+          status = res.status
+          status ? ExitStatus.new(status) : NULL
+        else
+          NULL
+        end
       end
 
       def evaluate(interpreter : Interpreter) : Variant
-        mem = IO::Memory.new
-        @statements.each do |statement|
-          statement.execute(interpreter, mem)
+        unless @return_status
+          capture(interpreter)
+        else
+          capture_status(interpreter)
         end
-        var = String.new(mem.to_s)
-        apply_actions(var, interpreter)
+      end
+
+      def dont_chomp
+        @chomp = false
+      end
+
+      def return_status
+        @return_status = true
       end
 
       def constant? : ::Bool
@@ -720,68 +759,68 @@ module TMBSH
 
     macro create_proc_func
       private def create_proc(interpreter : Interpreter) : Proc(::Array(Variant), Variant?)
-      case {@last_is_splat, !@optional_start_index.nil?}
+        case {@last_is_splat, !@optional_start_index.nil?}
         # if optional_start_index = @optional_start_index
-          # if @last_is_splat
-          in {true, true} # splat and optional
-            optional_start_index = @optional_start_index.not_nil!
-            ->(args : ::Array(Variant)) : Variant? {
-              raise ArgumentError.new("Expected #{optional_start_index} or more arguments") if args.size < optional_start_index
-              @argnames[...-1].each_with_index do |name, idx|
-                if idx >= optional_start_index
-                  @body.set_variable(name, args[idx]? || NULL)
-                else
-                  @body.set_variable(name, args[idx])
-                end
-              end
-              splatted = args[(@argnames.size - 1)..]?
-              if splatted && !splatted.empty?
-                @body.set_variable(@argnames[-1], Array.new(splatted))
+        # if @last_is_splat
+        in {true, true} # splat and optional
+          optional_start_index = @optional_start_index.not_nil!
+          ->(args : ::Array(Variant)) : Variant? {
+            raise ArgumentError.new("Expected #{optional_start_index} or more arguments") if args.size < optional_start_index
+            @argnames[...-1].each_with_index do |name, idx|
+              if idx >= optional_start_index
+                @body.set_variable(name, args[idx]? || NULL)
               else
-                @body.set_variable(@argnames[-1], NULL)
+                @body.set_variable(name, args[idx])
               end
-              TMBSH::Interpreter.create_proc_func_end
-            }
+            end
+            splatted = args[(@argnames.size - 1)..]?
+            if splatted && !splatted.empty?
+              @body.set_variable(@argnames[-1], Array.new(splatted))
+            else
+              @body.set_variable(@argnames[-1], NULL)
+            end
+            TMBSH::Interpreter.create_proc_func_end
+          }
           # else
-          in {false, true} # optional
-            optional_start_index = @optional_start_index.not_nil!
-            ->(args : ::Array(Variant)) : Variant? {
-              if args.size > @argnames.size || args.size < optional_start_index
-                raise ArgumentError.new("Expected #{optional_start_index + 1}..#{@argnames.size} arguments")
+        in {false, true} # optional
+          optional_start_index = @optional_start_index.not_nil!
+          ->(args : ::Array(Variant)) : Variant? {
+            if args.size > @argnames.size || args.size < optional_start_index
+              raise ArgumentError.new("Expected #{optional_start_index + 1}..#{@argnames.size} arguments")
+            end
+            @argnames.each_with_index do |name, idx|
+              if idx >= optional_start_index
+                @body.set_variable(name, args[idx]? || NULL)
+              else
+                @body.set_variable(name, args[idx])
               end
-              @argnames.each_with_index do |name, idx|
-                if idx >= optional_start_index
-                  @body.set_variable(name, args[idx]? || NULL)
-                else
-                  @body.set_variable(name, args[idx])
-                end
-              end
-              TMBSH::Interpreter.create_proc_func_end
-            }
+            end
+            TMBSH::Interpreter.create_proc_func_end
+          }
           # end
-        # else
+          # else
           # if @last_is_splat
-          in {true, false} # splat
-            ->(args : ::Array(Variant)) : Variant? {
-              raise ArgumentError.new("Expected #{@argnames.size} or more arguments") if @argnames.size > args.size
-              @argnames[...-1].each_with_index do |name, idx|
-                @body.set_variable(name, args[idx])
-              end
-              @body.set_variable(@argnames[-1], Array.new(args[(@argnames.size - 1)..]))
-              TMBSH::Interpreter.create_proc_func_end
-            }
+        in {true, false} # splat
+          ->(args : ::Array(Variant)) : Variant? {
+            raise ArgumentError.new("Expected #{@argnames.size} or more arguments") if @argnames.size > args.size
+            @argnames[...-1].each_with_index do |name, idx|
+              @body.set_variable(name, args[idx])
+            end
+            @body.set_variable(@argnames[-1], Array.new(args[(@argnames.size - 1)..]))
+            TMBSH::Interpreter.create_proc_func_end
+          }
           # else
-          in {false, false} # all args
-            ->(args : ::Array(Variant)) : Variant? {
-              raise ArgumentError.new("Expected #{@argnames.size} arguments") if @argnames.size != args.size
-              @argnames.each_with_index do |name, idx|
-                @body.set_variable(name, args[idx])
-              end
-              TMBSH::Interpreter.create_proc_func_end
-            }
+        in {false, false} # all args
+          ->(args : ::Array(Variant)) : Variant? {
+            raise ArgumentError.new("Expected #{@argnames.size} arguments") if @argnames.size != args.size
+            @argnames.each_with_index do |name, idx|
+              @body.set_variable(name, args[idx])
+            end
+            TMBSH::Interpreter.create_proc_func_end
+          }
           # end
-        # end
-      end
+          # end
+        end
       end
     end
 
@@ -813,7 +852,11 @@ module TMBSH
     end
 
     abstract class StatementNode < Node
-      abstract def execute(interpreter : Interpreter, output : IO | Process::Redirect = Process::Redirect::Inherit) : Result
+      abstract def execute(interpreter : Interpreter,
+                           output : IO | Process::Redirect = :Inherit,
+                           error : IO | Process::Redirect = :Inherit) : Result
+
+      property exit_code : Int32?
       # abstract def capture(interpreter )
     end
 
@@ -945,8 +988,9 @@ module TMBSH
 
       def create_process(
         interpreter : Interpreter,
-        input_io : IO | Process::Redirect = Process::Redirect::Inherit,
-        output_io : IO | Process::Redirect = Process::Redirect::Inherit
+        input_io : IO | Process::Redirect = :Inherit,
+        output_io : IO | Process::Redirect = :Inherit,
+        error_io : IO | Process::Redirect = :Inherit,
       ) : Process?
         set_env_vars_from_pairs(interpreter)
         args = create_str_args(interpreter)
@@ -961,7 +1005,7 @@ module TMBSH
               command, args,
               input: read_file || input_io,
               output: write_file || Process::Redirect::Pipe,
-              error: Process::Redirect::Inherit,
+              error: error_io,
               env: @env_vars
             )
             proceeding_command.create_process(
@@ -975,7 +1019,7 @@ module TMBSH
             command, args,
             input: read_file || input_io,
             output: write_file || output_io,
-            error: Process::Redirect::Inherit,
+            error: error_io,
             env: @env_vars
           )
         end
@@ -1000,10 +1044,16 @@ module TMBSH
         end
       end
 
-      def execute(interpreter : Interpreter, output : IO | Process::Redirect = Process::Redirect::Inherit) : Result
-        process = create_process(interpreter, output_io: output)
+      def execute(interpreter : Interpreter,
+                  output : IO | Process::Redirect = :Inherit,
+                  error : IO | Process::Redirect = :Inherit) : Result
+        process = create_process(interpreter, output_io: output, error_io: error)
         wait unless @fork_command
+        # if status = @status
+        #   exit_code = status.exit_code?
+        # end
         if status = @status
+          # exit_code = status.exit_code?
           CommandFinish.new(status.exit_code?)
         else
           NOTHING_RESULT # TODO: maybe add some forked command result?
@@ -1018,7 +1068,9 @@ module TMBSH
         @assignments = assignments
       end
 
-      def execute(interpreter : Interpreter, output : IO | Process::Redirect = Process::Redirect::Inherit) : Result
+      def execute(interpreter : Interpreter,
+                  output : IO | Process::Redirect = :Inherit,
+                  error : IO | Process::Redirect = :Inherit) : Result
         @assignments.each do |name, value|
           interpreter.set_variable(name, value.evaluate(interpreter))
         end
@@ -1046,15 +1098,18 @@ module TMBSH
         @statements << statement
       end
 
-      def execute(interpreter : Interpreter, output : IO | Process::Redirect = Process::Redirect::Inherit) : Result
+      def execute(interpreter : Interpreter,
+                  output : IO | Process::Redirect = :Inherit,
+                  error : IO | Process::Redirect = :Inherit) : Result
         # if @auto_scope_managment
         interpreter.enter_scope
         @vars.each do |name, value|
           interpreter.shadow_variable(name, value)
         end
         # end
+        res = nil
         @statements.each do |statement|
-          res = statement.execute(interpreter, output)
+          res = statement.execute(interpreter, output, error)
           if res.is_a?(Return | Break | Continue)
             interpreter.exit_scope
             # interpreter.exit_scope if @auto_scope_managment
@@ -1063,7 +1118,7 @@ module TMBSH
         end
         # interpreter.exit_scope if @auto_scope_managment
         interpreter.exit_scope
-        NOTHING_RESULT
+        res || NOTHING_RESULT
       end
 
       def set_variable(name : ::String, value : Variant)
@@ -1079,11 +1134,14 @@ module TMBSH
       end
     end
 
-    BREAK_STATEMENT_NODE    = BreakStatementNode.new
-    CONTINUE_STATEMENT_NODE = ContinueStatementNode.new
+    BREAK_STATEMENT_NODE          = BreakStatementNode.new
+    CONTINUE_STATEMENT_NODE       = ContinueStatementNode.new
+    NOTHING_RETURN_STATEMENT_NODE = ReturnStatementNode.new
 
     class BreakStatementNode < StatementNode
-      def execute(interpreter : Interpreter, output : IO | Process::Redirect = Process::Redirect::Inherit) : Result
+      def execute(interpreter : Interpreter,
+                  output : IO | Process::Redirect = :Inherit,
+                  error : IO | Process::Redirect = :Inherit) : Result
         BREAK_RESULT
       end
 
@@ -1093,7 +1151,9 @@ module TMBSH
     end
 
     class ContinueStatementNode < StatementNode
-      def execute(interpreter : Interpreter, output : IO | Process::Redirect = Process::Redirect::Inherit) : Result
+      def execute(interpreter : Interpreter,
+                  output : IO | Process::Redirect = :Inherit,
+                  error : IO | Process::Redirect = :Inherit) : Result
         CONTINUE_RESULT
       end
 
@@ -1109,7 +1169,9 @@ module TMBSH
         @value = value
       end
 
-      def execute(interpreter : Interpreter, output : IO | Process::Redirect = Process::Redirect::Inherit) : Result
+      def execute(interpreter : Interpreter,
+                  output : IO | Process::Redirect = :Inherit,
+                  error : IO | Process::Redirect = :Inherit) : Result
         Return.new(@value.try &.evaluate(interpreter))
       end
 
@@ -1127,49 +1189,53 @@ module TMBSH
       @varname : ::String?
       property varname
       @body : StatementBlockNode
-      @elsif_blocks : ::Array({ConditionNode, StatementBlockNode, ::String?}) = [] of {ConditionNode, StatementBlockNode, ::String?}
-      property elsif_blocks
+      @elsif_bodies : ::Array({ConditionNode, StatementBlockNode, ::String?}) = [] of {ConditionNode, StatementBlockNode, ::String?}
+      property elsif_bodies
       @else_body : StatementBlockNode?
       property else_body
 
-      def initialize(condition : ConditionNode, body : StatementBlockNode)
+      def initialize(condition : ConditionNode, body : StatementBlockNode, varname : ::String?)
         @condition = condition
         @body = body
+        @varname = varname
       end
 
-      def execute(interpreter : Interpreter, output : IO | Process::Redirect = Process::Redirect::Inherit) : Result
+      def execute(interpreter : Interpreter,
+                  output : IO | Process::Redirect = :Inherit,
+                  error : IO | Process::Redirect = :Inherit) : Result
         condition_result = @condition.evaluate(interpreter)
         if condition_result.truthy?
           if varname = @varname
             @body.set_variable(varname, condition_result)
           end
-          res = @body.execute(interpreter, output)
-          if res.is_a?(Result | Break)
+          res = @body.execute(interpreter, output, error)
+          # @body.unset_variables
+          # if res.is_a?(Result | Break)
             return res
-          end
-          @body.unset_variables
+          # end
         else
-          @elsif_blocks.each do |condition, block, varname|
+          @elsif_bodies.each do |condition, block, varname|
             # p! condition, block, varname
             condition_result = condition.evaluate(interpreter)
             if condition_result.truthy?
               if varname
                 block.set_variable(varname, condition_result)
               end
-              res = block.execute(interpreter, output)
-              if res.is_a?(Result | Break)
+              res = block.execute(interpreter, output, error)
+              # block.unset_variables
+              # if res.is_a?(Result | Break)
                 return res
-              end
-              block.unset_variables
+              # end
               return NOTHING_RESULT
             end
           end
           if else_body = @else_body
-            res = else_body.execute(interpreter, output)
-            if res.is_a?(Result | Break)
+            res = else_body.execute(interpreter, output, error)
+            # else_body.unset_variables
+            # if res.is_a?(Result | Break)
               return res
-            end
-            else_body.unset_variables
+            # end
+            # what was i thinking?
           end
         end
         NOTHING_RESULT
@@ -1192,14 +1258,16 @@ module TMBSH
         @varname = varname
       end
 
-      def execute(interpreter : Interpreter, output : IO | Process::Redirect = Process::Redirect::Inherit) : Result
+      def execute(interpreter : Interpreter,
+                  output : IO | Process::Redirect = :Inherit,
+                  error : IO | Process::Redirect = :Inherit) : Result
         while true
           condition = @condition.evaluate(interpreter)
           break unless condition.truthy?
           if varname = @varname
             @body.set_variable(varname, condition)
           end
-          res = @body.execute(interpreter, output)
+          res = @body.execute(interpreter, output, error)
           if res.is_a?(Return)
             return res
           end
@@ -1226,7 +1294,7 @@ module TMBSH
       end
 
       macro execute_block
-        res = @body.execute(interpreter, output)
+        res = @body.execute(interpreter, output, error)
         if res.is_a?(Break)
           break
         end
@@ -1235,7 +1303,9 @@ module TMBSH
         end
       end
 
-      def execute(interpreter : Interpreter, output : IO | Process::Redirect = Process::Redirect::Inherit) : Result
+      def execute(interpreter : Interpreter,
+                  output : IO | Process::Redirect = :Inherit,
+                  error : IO | Process::Redirect = :Inherit) : Result
         variant = @iterable.evaluate(interpreter)
         iter = variant.is_a?(Iterator) ? variant : variant.iter_init
         if @varnames.size == 1
@@ -1261,7 +1331,7 @@ module TMBSH
         # if @varnames.size == 1
         #   iter.each do |val|
         #     interpreter.shadow_variable(@varnames[0], val)
-        #     res = @body.execute(interpreter, output)
+        #     res = @body.execute(interpreter, output, error)
         #     if res.is_a?(Break)
         #       interpreter.exit_scope
         #       break
@@ -1273,7 +1343,7 @@ module TMBSH
         #   end
         # elsif @varnames.empty?
         #   iter.each do |val|
-        #     res = @body.execute(interpreter, output)
+        #     res = @body.execute(interpreter, output, error)
         #     if res.is_a?(Break)
         #       interpreter.exit_scope
         #       break
@@ -1290,7 +1360,7 @@ module TMBSH
         #     @varnames.each_with_index do |name, i|
         #       interpreter.shadow_variable(name, arr[i]? || NULL)
         #     end
-        #     res = @body.execute(interpreter, output)
+        #     res = @body.execute(interpreter, output, error)
         #     if res.is_a?(Break)
         #       interpreter.exit_scope
         #       break
@@ -1348,7 +1418,9 @@ module TMBSH
 
       TMBSH::Interpreter.create_proc_func
 
-      def execute(interpreter : Interpreter, output : IO | Process::Redirect = Process::Redirect::Inherit) : Result
+      def execute(interpreter : Interpreter,
+                  output : IO | Process::Redirect = :Inherit,
+                  error : IO | Process::Redirect = :Inherit) : Result
         function = Function.new(create_proc(interpreter))
         function.name = @funcname
         interpreter.shadow_variable(@funcname, function)
@@ -1361,7 +1433,9 @@ module TMBSH
     end
 
     class EmptyStatementNode < StatementNode
-      def execute(interpreter : Interpreter, output : IO | Process::Redirect = Process::Redirect::Inherit) : Result
+      def execute(interpreter : Interpreter,
+                  output : IO | Process::Redirect = :Inherit,
+                  error : IO | Process::Redirect = :Inherit) : Result
         NOTHING_RESULT
       end
 
@@ -1369,6 +1443,8 @@ module TMBSH
         true
       end
     end
+
+    EMPTY_STATEMENT_NODE = EmptyStatementNode.new
 
     NOTHING_RESULT  = Nothing.new
     BREAK_RESULT    = Break.new
@@ -1394,6 +1470,7 @@ module TMBSH
 
     struct CommandFinish < Result
       @status : Int32?
+      getter status
 
       def initialize(status : Int32?)
         @status = status
