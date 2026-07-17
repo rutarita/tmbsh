@@ -29,14 +29,20 @@ module ReadLine
     LibReadLine.rl_bind_key(key.ord, function)
   end
 
-  def history_list : ::Array(::String)?
+  def history_list : ::Array(::String)
     ptr = LibReadLine.history_list
-    return if ptr.null?
-    size = (0..).each do |i|
-      if ptr[i].null?
-        break i
-      end
+    return [] of ::String if ptr.null?
+    ary = [] of ::String
+    until ptr.value.null?
+      ary << ::String.new(ptr.value.value.line)
+      ptr += 1
     end
-    ptr.to_slice(size).map { |entry| ::String.new(entry.value.line) }.to_a
+    ary
+    # size = (0..).each do |i|
+    #   if ptr[i].null?
+    #     break i
+    #   end
+    # end
+    # ptr.to_slice(size).map { |entry| ::String.new(entry.value.line) }.to_a
   end
 end
