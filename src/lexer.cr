@@ -84,6 +84,7 @@ module TMBSH
       @token.row = @row
       @token.column = @column
       char = current_char
+      p! char
       case char
       when '\''
         start_statement
@@ -400,6 +401,7 @@ module TMBSH
           # next_char
           next
         elsif char == '\\'
+          break if @string_mode.plain? && peek_char == '\n'
           escaped = true
           next
         end
@@ -492,7 +494,7 @@ module TMBSH
         break unless char == ' ' || char == '\t' || (char == '\\' && peek_char == '\n')
         if char == '\\'
           next_char
-          next_char
+          # next_char
         else
         mem << char
         end

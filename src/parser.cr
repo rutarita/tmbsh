@@ -766,31 +766,3 @@ module TMBSH
 
 
 end
-# f = File.open("../examples/static/iterator_method.tmbsh")
-# parser = TMBSH::Parser.new(f)
-# until parser.token.kind.eof?
-#   p! parser.next_token
-# end
-
-# parser = TMBSH::Parser.new("if $(ls /)?; echo exists; else; echo doesnt exist; end")
-# s = parser.parse_statement
-# # p! s
-# interpreter = TMBSH::Interpreter.new
-# interpreter.execute_statement(s)
-# parser = TMBSH::Parser.new("if $(ls /idk)?; echo exists; else; echo doesnt exist; end")
-# s = parser.parse_statement
-# # p! s
-# interpreter = TMBSH::Interpreter.new
-# interpreter.execute_statement(s)
-# f = File.open("../examples/static/iterator_method.tmbsh")
-# parser = TMBSH::Parser.new(f)
-# interpreter = TMBSH::Interpreter.new
-# until parser.token.kind.eof?
-#   statement = parser.parse_statement
-#   # p! statement
-#   interpreter.execute_statement(statement)
-# end
-# interpreter = TMBSH::Interpreter.new
-# interpreter.execute_string("if $(ls /)?; echo exists; else; echo doesnt exist; end")
-# interpreter.execute_string("if $(ls /doesntexist/path)?; echo exists; else; echo doesnt exist; end")
-# interpreter.execute_string("uniq")
