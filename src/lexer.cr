@@ -397,6 +397,7 @@ module TMBSH
           escaped_char = resolve_escaped(char)
           buffer << escaped_char unless escaped_char == '\0'
           escaped = false
+          # next_char
           next
         elsif char == '\\'
           escaped = true
@@ -489,7 +490,12 @@ module TMBSH
       mem << current_char
       while char = next_char
         break unless char == ' ' || char == '\t' || (char == '\\' && peek_char == '\n')
+        if char == '\\'
+          next_char
+          next_char
+        else
         mem << char
+        end
       end
       mem.to_s
     end

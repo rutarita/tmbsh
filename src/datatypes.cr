@@ -53,7 +53,7 @@ module TMBSH
   abstract class Variant
     @@methods : Hash(::String, Function) = {} of ::String => Function
     @@unstable_methods : ::Set(::String) = ::Set(::String).new # means methods that can vary in result even if the value is consistent
-
+    @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     ITER_METHOD = TMBSH.abstract_method("iter") do
       this.iter_init
     end
@@ -137,9 +137,18 @@ module TMBSH
     abstract def iter_init : Iterator
 
     abstract def truthy? : ::Bool
+    {% if flag?(:method_hash_caching)%}
+    def get_method(method_hash : UInt64) : Function?
+      @@methods_hash_cache[method_hash]?
+    end
+    {% end %}
+
 
     def get_method(name : ::String)
       if method = @@methods[name]?
+        {% if flag?(:method_hash_caching) %}
+        @@methods_hash_cache[name.hash] = method
+        {% end %}
         method
       else
         raise MethodDoesNotExist.new("Method #{name} doesn't exist on #{self.class}")

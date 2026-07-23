@@ -97,12 +97,14 @@ module TMBSH
     struct MethodCall < Action
       @args : ::Array(ValueNode)
       @method_name : ::String
+      @method_hash : UInt64
       getter args
       getter method_name
 
       def initialize(method_name : ::String, args : ::Array(ValueNode))
         @args = args
         @method_name = method_name
+        @method_hash = method_name.hash
       end
 
       def constant? : ::Bool
@@ -113,9 +115,27 @@ module TMBSH
       end
 
       def apply(to : Variant, interpreter : Interpreter) : Variant
-        args = @args.map &.evaluate(interpreter)
-        args.unshift(to)
+        # args = @args.map &.evaluate(interpreter)
+        # args.unshift(to)
+        args_size = @args.size + 1
+        args = ::Array(Variant).build(args_size) do |ptr|
+          ptr[0] = to
+          idx = 0
+          @args.each do |item|
+            idx += 1
+            ptr[idx] = item.evaluate(interpreter)
+          end
+          args_size
+        end
+        {%if flag?(:method_hash_caching)%}
+        if method = to.get_method(@method_hash)
+          method.call(args)
+        else
         to.get_method(@method_name).call(args)
+        end
+        {% else %}
+        to.get_method(@method_name).call(args)
+        {% end %}
       end
     end
 
@@ -377,7 +397,7 @@ module TMBSH
         # p! separated
         expanded = expand_path(initial_path, separated[0], separated.size > 1 || @path_dir_end)
         return to_literal(interpreter) unless expanded
-        separated[1...-1].each do |pattern|
+        separated.each(within: 1...-1) do |pattern|
           expanded = expand_paths(expanded, pattern, true)
           return to_literal(interpreter) if expanded.empty?
         end

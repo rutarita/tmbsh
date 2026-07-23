@@ -152,16 +152,7 @@ module TMBSH
     end
 
     def execute_string(string : ::String)
-      {% unless flag?(:old_parsing) %}
-        execute_parsable(string)
-      {% else %}
-        scanner = StringScanner.new(string)
-        until scanner.eos?
-          statement = RegexBasedLexerParser.parse_statement_node(scanner)
-          p! statement
-          execute_statement(statement)
-        end
-      {% end %}
+      execute_parsable(string)
     end
 
     def execute_file(path : ::String | Path)
@@ -178,21 +169,3 @@ module TMBSH
     end
   end
 end
-# interpreter = TMBSH::Interpreter.new
-# interpreter.execute_file(ARGV[0])
-# while true
-#   mem = IO::Memory.new
-#   while str = gets
-#     mem << str
-#     mem << '\n'
-#   end
-#   res = mem.to_s
-#   p! res
-#   s = StringScanner.new(res)
-#   # t = Time.measure do
-#   statement = interpreter.parse_statement_node(s)
-#   p! statement
-#   puts statement.class
-#   statement.execute(interpreter)
-#   # end
-# end

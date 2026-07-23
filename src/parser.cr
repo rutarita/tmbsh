@@ -121,6 +121,10 @@ module TMBSH
       Token::Kind::ParenthesisOpen,
       Token::Kind::ParenthesisClose,
       Token::Kind::ArrowRight,
+      Token::Kind::Pipe,
+      Token::Kind::AppendToFile,
+      Token::Kind::WriteToFile,
+      Token::Kind::ReadFromFile,
     })
     def parse_string : Interpreter::SingleValueNode | Interpreter::StringNode
       # unexpected_token unless token.kind.string?
@@ -786,7 +790,7 @@ end
 #   # p! statement
 #   interpreter.execute_statement(statement)
 # end
-interpreter = TMBSH::Interpreter.new
-interpreter.execute_string("if $(ls /)?; echo exists; else; echo doesnt exist; end")
-interpreter.execute_string("if $(ls /doesntexist/path)?; echo exists; else; echo doesnt exist; end")
-interpreter.execute_string("uniq")
+# interpreter = TMBSH::Interpreter.new
+# interpreter.execute_string("if $(ls /)?; echo exists; else; echo doesnt exist; end")
+# interpreter.execute_string("if $(ls /doesntexist/path)?; echo exists; else; echo doesnt exist; end")
+# interpreter.execute_string("uniq")
