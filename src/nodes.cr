@@ -248,6 +248,11 @@ module TMBSH
         @parts.empty?
       end
 
+      @@string_pool : StringPool = StringPool.new
+      private def create_string(str)
+        String.new(@@string_pool.get(str))
+      end
+
       private def expand_path(dir_path : Path?, pattern : Regex | ::String, dirs_only : ::Bool) : ::Array(Path)?
         if dir_path
           if pattern.is_a?(Regex) && Dir.exists?(dir_path)
@@ -381,7 +386,7 @@ module TMBSH
             end
           end
         end
-        String.new(str)
+        create_string(str)
       end
 
       private def expand_attempt(interpreter : Interpreter) : Variant
@@ -408,7 +413,7 @@ module TMBSH
         return to_literal(interpreter) if expanded.empty?
         array = [] of Variant
         expanded.each do |item|
-          array << String.new(item.to_s)
+          array << create_string(item.to_s)
         end
         Array.new(array)
       end
@@ -445,7 +450,7 @@ module TMBSH
             io << part.to_s
           end
         end
-        SingleValueNode.new(String.new(str))
+        SingleValueNode.new(create_string(str))
       end
 
       def add_path_separator
@@ -1005,7 +1010,7 @@ module TMBSH
           @file = ::File.open(target.evaluate(interpreter).to_s)
         end
       end
-
+      @builtin_result : Result?
       def create_process(
         interpreter : Interpreter,
         input_io : IO | Process::Redirect = :Inherit,
@@ -1016,6 +1021,41 @@ module TMBSH
         args = create_str_args(interpreter)
         return if args.empty?
         command = args.shift
+        if builtin = interpreter.get_builtin(command)
+          # execute_builtin(builtin, args, input_io, output_io, error_io)
+          builtin_input_io = if input_io.is_a?(Process::Redirect)
+            case input_io
+              when .inherit?
+                STDIN
+              # when .
+            end
+          else
+            input_io
+          end
+          builtin_output_io = if output_io.is_a?(Process::Redirect)
+            case output_io
+              when .inherit?
+                STDIN
+              # when .
+            end
+          else
+            output_io
+          end
+          builtin_error_io = if error_io.is_a?(Process::Redirect)
+            case error_io
+              when .inherit?
+                STDIN
+              # when .
+            end
+          else
+            error_io
+          end
+
+          @builtin_result = builtin.call(
+          interpreter, builtin_input_io, builtin_output_io, builtin_error_io, args
+          )
+          return
+        end
         process = nil
         write_file = get_write_file_io(interpreter)
         read_file = get_read_file_io(interpreter)
@@ -1047,6 +1087,13 @@ module TMBSH
         process
       end
 
+      # private def execute_builtin(
+      # builtin : BuiltinCommand, args : ::Array(::String)
+      # input_io, output_io, error_io
+      # )
+      # builtin.call(args, input_io, output_io, error_io)
+      # end
+
       @status : Process::Status?
 
       def wait : Nil
@@ -1072,6 +1119,10 @@ module TMBSH
         # if status = @status
         #   exit_code = status.exit_code?
         # end
+        if builtin_result = @builtin_result
+          @builtin_result = nil
+          return builtin_result
+        end
         if status = @status
           # exit_code = status.exit_code?
           CommandFinish.new(status.exit_code?)

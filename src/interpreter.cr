@@ -7,6 +7,7 @@ require "./top_level_values"
 {% else %}
   require "./regex_based_lexer_parser"
 {% end %}
+require "./builtin_commands"
 module TMBSH
   class Interpreter
     class VariableStack
@@ -92,8 +93,11 @@ module TMBSH
       end
     end
 
-    alias BuiltinCommand = Interpreter, IO, IO, IO, ::Array(ValueNode) -> Result
-    @builtins : Hash(::String, BuiltinCommand) = {} of ::String => BuiltinCommand
+    alias BuiltinCommand = Interpreter, IO?, IO?, IO?, ::Indexable(::String) -> Result
+    @builtins : Hash(::String, BuiltinCommand)  = BUILTIN_COMMANDS
+    def get_builtin(name : ::String) : BuiltinCommand?
+      @builtins[name]?
+    end
     @variable_stack : VariableStack
     @aliases : Hash(::String, ::String) = {} of ::String => ::String
     @strict : ::Bool = false
@@ -169,3 +173,4 @@ module TMBSH
     end
   end
 end
+
