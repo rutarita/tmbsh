@@ -317,6 +317,7 @@ module TMBSH
       "while"  => :WhileKeyword,
       "return" => :ReturnKeyword,
       "continue" => :ContinueKeyword,
+      "next"    => :ContinueKeyword,
       "break"  => :BreakKeyword,
       "end"    => :EndKeyword,
     } of ::String => Token::Kind
