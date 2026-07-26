@@ -1607,10 +1607,11 @@ module TMBSH
       property str
       property current_idx
 
-      @@string_pool : StringPool = StringPool.new
+      # @@string_pool : StringPool = StringPool.new
 
       def initialize(val : ::String)
-        @str = @@string_pool.get(val)
+        # @str = @@string_pool.get(val)
+        @str = val
       end
 
       def iter_next : Variant?
