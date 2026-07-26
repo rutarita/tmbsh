@@ -84,7 +84,6 @@ module TMBSH
       @token.row = @row
       @token.column = @column
       char = current_char
-      p! char
       case char
       when '\''
         start_statement
@@ -266,7 +265,7 @@ module TMBSH
         else
           str = consume_string
           if current_char.in?(' ', '\n', ';', '\0')
-            if @start_of_statement
+            if @start_of_statement && str.size <= LONGEST_KEYWORD_LENGTH
               if kind = KEYWORDS[str]?
                 @token.kind = kind
                 if kind.for_keyword?
@@ -321,6 +320,9 @@ module TMBSH
       "break"  => :BreakKeyword,
       "end"    => :EndKeyword,
     } of ::String => Token::Kind
+
+    LONGEST_KEYWORD_LENGTH = 8
+
 
     private enum StringMode
       Plain
