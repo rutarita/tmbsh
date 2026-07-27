@@ -743,7 +743,7 @@ module TMBSH
         res = @body.execute(interpreter, :Close, :Close)
         if res.is_a?(CommandFinish)
           status = res.status
-          status ? ExitStatus.new(status) : NULL
+          status ? ExitStatus.new(status.exit_code, status) : NULL
         else
           NULL
         end
@@ -1136,7 +1136,7 @@ module TMBSH
         end
         if status = @status
           # exit_code = status.exit_code?
-          CommandFinish.new(status.exit_code?)
+          CommandFinish.new(status.exit_code?, status)
         else
           NOTHING_RESULT # TODO: maybe add some forked command result?
         end
@@ -1551,10 +1551,14 @@ module TMBSH
     end
 
     struct CommandFinish < Result
-      @status : Int32?
-      getter status # subject to name change
+      @exit_code : Int32?
+      getter exit_code
+      @status : Process::Status?
+      getter status
 
-      def initialize(status : Int32?)
+
+      def initialize(exit_code : Int32?, status : Process::Status? = nil)
+        @exit_code = exit_code
         @status = status
       end
     end

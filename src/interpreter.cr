@@ -164,8 +164,11 @@ module TMBSH
       @aliases[name] = command
     end
 
-    def execute_statement(statement : StatementNode) : Result
-      statement.execute(self)
+    def execute_statement(statement : StatementNode) : Nil
+      res = statement.execute(self)
+      if res.is_a?(CommandFinish)
+          set_constant("?", ExitStatus.new(res.exit_code, res.status))
+      end
     end
 
     private def execute_parsable(parsable)
@@ -179,13 +182,9 @@ module TMBSH
             return
           end
           begin
-            res = execute_statement(statement)
+            execute_statement(statement)
           rescue e
             puts "tmbsh: Exception #{e.to_s}"
-          end
-          if res.is_a?(CommandFinish)
-            status = res.status
-            set_constant("?", status ? ExitStatus.new(status) : NULL)
           end
       end
     end

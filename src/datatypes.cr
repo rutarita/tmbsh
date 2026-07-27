@@ -2852,19 +2852,30 @@ module TMBSH
   end
 
   class ExitStatus < Variant
-    @exit_code : Int32
-
+    @exit_code : Int32?
+    @status : Process::Status?
+    property status
     FLOAT_METHOD = TMBSH.method("float") do
-      Float.new(this.@exit_code)
+      code = this.@exit_code
+      code ? Float.new(code) : NULL
     end
     INT_METHOD = TMBSH.method("int") do
-      Float.new(this.@exit_code)
+      code = this.@exit_code
+      code ? Float.new(code) : NULL
+    end
+
+    DESCRIPTION_METHOD = TMBSH.method("description") do
+      raise ArgumentError.new("Expected no argument for description") unless args.size == 1
+      status = this.status
+      status ? String.new(status.description) : NULL
     end
 
     @@methods = {
       "float"    => FLOAT_METHOD,
       "int"    => INT_METHOD,
       "str"    => STR_METHOD,
+
+      "description" => DESCRIPTION_METHOD,
 
       "is_a?"  => IS_A_METHOD,
       "eq?"    => EQ_METHOD,
@@ -2876,8 +2887,9 @@ module TMBSH
 
     @@type_aliases = ::Set{"exit_status", "status"}
 
-    def initialize(exit_code : Int32)
+    def initialize(exit_code : Int32?, status : Process::Status? = nil)
       @exit_code = exit_code
+      @status = status
     end
 
     def to_s : ::String
@@ -2885,11 +2897,11 @@ module TMBSH
     end
 
     def to_f64 : Float64
-      @exit_code.to_f64
+      @exit_code.try &.to_f64 || -1.0
     end
 
     def to_i64 : Int64
-      @exit_code.to_i64
+      @exit_code.try &.to_i64 || -1_i64
     end
 
     def to_a : ::Array(Variant)
