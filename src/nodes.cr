@@ -1401,7 +1401,7 @@ module TMBSH
           end
         else
           iter.each do |val|
-            raise "Splatting is only allowed only on Array" unless val.is_a?(Array)
+            raise "Splatting is only allowed on Array" unless val.is_a?(Array)
             arr = val.@value
             @varnames.each_with_index do |name, i|
               @body.set_variable(name, arr[i]? || NULL)
