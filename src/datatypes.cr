@@ -385,7 +385,7 @@ module TMBSH
 
     ADD_METHOD = TMBSH.method("add") do
       num = this.@value
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         num += arg.{{conversion}}
       end
       {{name}}.new(num)
@@ -393,7 +393,7 @@ module TMBSH
 
     SUB_METHOD = TMBSH.method("sub") do
       num = this.@value
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         num -= arg.{{conversion}}
       end
       {{name}}.new(num)
@@ -401,7 +401,7 @@ module TMBSH
 
     MUL_METHOD = TMBSH.method("mul") do
       num = this.@value
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         num *= arg.{{conversion}}
       end
       {{name}}.new(num)
@@ -409,7 +409,7 @@ module TMBSH
 
     DIV_METHOD = TMBSH.method("div") do
       num = this.@value
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         num /= arg.{{conversion}}
       end
       {{name}}.new(num)
@@ -417,14 +417,14 @@ module TMBSH
 
     AND_METHOD = TMBSH.method("and") do
       res = this.@value.to_i64
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         res &= arg.to_i
       end
       Int.new(res)
     end
     OR_METHOD = TMBSH.method("or") do
       res = this.@value.to_i64
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         res |= arg.to_i
       end
       Int.new(res)
@@ -432,7 +432,7 @@ module TMBSH
 
     XOR_METHOD = TMBSH.method("xor") do
       res = this.@value.to_i64
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         res ^= arg.to_i
       end
       Int.new(res)
@@ -440,14 +440,14 @@ module TMBSH
 
     FDIV_METHOD = TMBSH.method("fdiv") do
       num = this.@value
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         num //= arg.{{conversion}}
       end
       {{name}}.new(num)
     end
     POW_METHOD = TMBSH.method("pow") do
       num = this.@value
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         num **= arg.{{conversion}}
       end
       {{name}}.new(num)
@@ -895,7 +895,7 @@ module TMBSH
       Int.new(this.@value.size)
     end
     APPEND_METHOD = TMBSH.method("append") do
-      args[1..].each do |item|
+      args.each(within: 1..) do |item|
         this << item
       end
       this
@@ -920,14 +920,14 @@ module TMBSH
     end
 
     DELETE_METHOD = TMBSH.method("delete") do
-      args[1..].each do |item|
+      args.each(within: 1..) do |item|
         this.delete item
       end
       this
     end
     CONCAT_METHOD = TMBSH.method("concat") do
       copy = this.dup
-      args[1..].each do |item|
+      args.each(within: 1..) do |item|
         arr = item.to_a
         copy.@value.concat(arr)
       end
@@ -955,7 +955,7 @@ module TMBSH
       this.@value.shift
     end
     UNSHIFT_METHOD = TMBSH.method("unshift") do
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         this.@value.unshift arg
       end
       this
@@ -1334,7 +1334,7 @@ module TMBSH
     @value : ::Set(Variant)
 
     ADD_METHOD = TMBSH.method("add") do
-      args[1..].each do |item|
+      args.each(within: 1..) do |item|
         this << item
       end
       this
@@ -1421,7 +1421,7 @@ module TMBSH
     end
 
     DELETE_METHOD = TMBSH.method("delete") do
-      args[1..].each do |item|
+      args.each(within: 1..) do |item|
         this.delete item
       end
       this
@@ -1728,7 +1728,7 @@ module TMBSH
     end
     CONCAT_METHOD = TMBSH.method("concat") do
       res = this
-      args[1..].each do |item|
+      args.each(within: 1..) do |item|
         res = res.concat(item)
       end
       res
@@ -1784,7 +1784,7 @@ module TMBSH
 
     COUNT_METHOD = TMBSH.method("count") do
       res = 0
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         target = arg.to_s
         res += this.@value.count(target)
       end
@@ -1795,7 +1795,7 @@ module TMBSH
 
     ENDS_WITH_METHOD = TMBSH.method("ends_with") do
       res = false
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         target = arg.to_s
         if this.@value.ends_with?(target)
           res = true
@@ -1807,7 +1807,7 @@ module TMBSH
 
     STARTS_WITH_METHOD = TMBSH.method("starts_with") do
       res = false
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         target = arg.to_s
         if this.@value.starts_with?(target)
           res = true
@@ -1857,7 +1857,7 @@ module TMBSH
 
     JOIN_METHOD = TMBSH.method("join") do
       path = Path[this.@value]
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         path = path / arg.to_s
       end
       String.new(path.to_s)
@@ -2686,7 +2686,7 @@ module TMBSH
     @path : ::String
 
     WRITE_METHOD = TMBSH.method("write") do
-      args[1..].each do |arg|
+      args.each(within: 1..) do |arg|
         @file.write(arg)
       end
       this
