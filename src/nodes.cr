@@ -1541,7 +1541,7 @@ module TMBSH
 
     struct CommandFinish < Result
       @status : Int32?
-      getter status
+      getter status # subject to name change
 
       def initialize(status : Int32?)
         @status = status

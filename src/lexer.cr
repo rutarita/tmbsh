@@ -67,6 +67,17 @@ module TMBSH
       end
     end
 
+    private def next_char_string_or_varname_or(token : Token::Kind)
+      if @lex_varname
+        char = current_char
+        next_char :Varname
+        @token.raw_value = char.to_s
+        @token.kind = :Varname
+      else# str = current_char.to_s
+        next_char_string_or token
+      end
+    end
+
     @after_for : ::Bool = false
     @lex_for_varnames : ::Bool = false
     @lex_varname : ::Bool = false
@@ -116,7 +127,7 @@ module TMBSH
         next_char_string_or :Semicolon
       when '@'
         end_statement
-        next_char_string_or :At
+        next_char_string_or_varname_or :At
       when '^'
         start_statement
         next_char_string_or :Caret
@@ -135,13 +146,13 @@ module TMBSH
         next_char :PathSeparator
       when '*'
         start_statement
-        next_char_string_or :Splat
+        next_char_string_or_varname_or :Splat
       when '?'
         start_statement
-        next_char_string_or :Question
+        next_char_string_or_varname_or :Question
       when '!'
         start_statement
-        next_char_string_or :Exclamation
+        next_char_string_or_varname_or :Exclamation
       when '&'
         start_statement
         if peek_char == '&'

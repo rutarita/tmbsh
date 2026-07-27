@@ -102,6 +102,9 @@ module TMBSH
     @aliases : Hash(::String, ::String) = {} of ::String => ::String
     @strict : ::Bool = false
 
+    @cwd : ::String
+    property cwd
+
       def enter_scope
         @variable_stack.enter_scope
       end
@@ -113,6 +116,8 @@ module TMBSH
       def set_variable(name : ::String, value : Variant, scope : Int32 = -1)
         @variable_stack[name] = value
       end
+
+      delegate set_constant, to: @variable_stack
 
       def shadow_variable(name : ::String, value : Variant)
         @variable_stack.shadow_variable(name, value)
@@ -143,15 +148,23 @@ module TMBSH
       set_pseudoconstants_from_env if constants_from_env
     end
 
-    def execute_statement(statement : StatementNode)
+    def execute_statement(statement : StatementNode) : Result
       statement.execute(self)
     end
 
     private def execute_parsable(parsable)
       parser = Parser.new(parsable)
       until parser.token.kind.eof?
+          begin
           statement = parser.parse_statement
-          execute_statement(statement)
+          res = execute_statement(statement)
+          rescue e
+            puts "Exception occured: #{e.inspect}"
+          end
+          if res.is_a?(CommandFinish)
+            status = res.status
+            set_constant("?", status ? ExitStatus.new(status) : NULL)
+          end
       end
     end
 
@@ -161,9 +174,9 @@ module TMBSH
 
     def execute_file(path : ::String | Path)
       # string = ::File.read(path)
-      io = ::File.open(path)
-      execute_parsable(io)
-      io.close
+      ::File.open(path) do |io|
+        execute_parsable(io)
+      end
       # execute_string(string)
     end
 
