@@ -1096,6 +1096,9 @@ module TMBSH
       @value = arr
     end
 
+
+    delegate size, to: @value
+
     def dup : Array
       self.class.new(@value.dup)
     end
@@ -1907,6 +1910,12 @@ module TMBSH
       this.encode
     end
 
+    OPEN_METHOD = TMBSH.method("open") do
+      raise ArgumentError.new("Expected 0..1 arguments") if args.size > 2
+      modes = args[1]?.try &.to_s || "r"
+      File.new(this.@value, modes)
+    end
+
     @@methods = {
       # string operations
       "size"         => SIZE_METHOD,
@@ -1951,6 +1960,7 @@ module TMBSH
       "stat"         => STAT_METHOD,
       "info"         => STAT_METHOD,
       "read"         => READ_METHOD,
+      "open"         => OPEN_METHOD,
       "exists?"      => EXISTS_METHOD,
       "iterdir"      => ITERDIR_METHOD,
 
@@ -2685,14 +2695,71 @@ module TMBSH
     @file : ::File
     @path : ::String
 
-    WRITE_METHOD = TMBSH.method("write") do
+    # WRITE_METHOD = TMBSH.method("write") do
+    #   args.each(within: 1..) do |arg|
+    #     this.@file.print(arg.to_s)
+    #   end
+    #   this
+    # end
+
+    PRINT_METHOD = TMBSH.method("print") do
       args.each(within: 1..) do |arg|
-        @file.write(arg)
+        this.@file.print(arg.to_s)
+      end
+      this
+    end
+    PUTS_METHOD = TMBSH.method("puts") do
+      args.each(within: 1..) do |arg|
+        this.@file.puts(arg.to_s)
       end
       this
     end
 
+    READ_METHOD = TMBSH.method("read") do
+      raise "Expected one Array argument to read" unless args.size == 2 && args[1].is_a?(Array)
+      ary = args[1].as(Array)
+      bytes = Bytes.new(ary.size)
+      amount = this.@file.read(bytes)
+      bytes[0...amount].each_with_index do |b, i|
+        ary.@value[i] = Int.new(b)
+      end
+      ary
+    end
+
+    GETS_TO_END_METHOD = TMBSH.method("gets_to_end") do
+      raise "Expected no arguments to gets_to_end" unless args.size == 1
+      String.new(this.@file.gets_to_end)
+    end
+
+    GETS_METHOD = TMBSH.method("gets") do
+      if args.size == 1
+        val = this.@file.gets
+        val ? String.new(val) : NULL
+      elsif args.size == 2
+        val = this.@file.gets(args[1].to_s)
+        val ? String.new(val) : NULL
+      else
+        raise "Expected 0..1 arguments to gets"
+      end
+    end
+
+    CLOSE_METHOD = TMBSH.method("close") do
+      raise "Expected no arguments to close" unless args.size == 1
+      this.@file.close
+      NULL
+    end
+
     @@methods = {
+
+      # "write"  => WRITE_METHOD,
+      "print" => PRINT_METHOD,
+      "puts"  => PUTS_METHOD,
+      "read"   => READ_METHOD,
+      "readline" => GETS_METHOD,
+      "gets"   => GETS_METHOD,
+      "gets_to_end" => GETS_TO_END_METHOD,
+      "read_fully" => GETS_TO_END_METHOD,
+      "close"   => CLOSE_METHOD,
 
       "str"    => STR_METHOD,
 
