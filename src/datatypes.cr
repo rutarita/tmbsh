@@ -1222,7 +1222,8 @@ module TMBSH
     end
 
     def truthy? : ::Bool
-      !@value.empty?
+      # !@value.empty?
+      true
     end
 
     def map!(fn : Function)
@@ -1538,7 +1539,8 @@ module TMBSH
     end
 
     def truthy? : ::Bool
-      !@value.empty?
+      # !@value.empty?
+      true
     end
 
     def to_string_array : ::Array(::String)
@@ -2080,7 +2082,8 @@ module TMBSH
     end
 
     def truthy? : ::Bool
-      !@value.empty?
+      # !@value.empty?
+      true
     end
 
     def walk : Iterator
@@ -2343,7 +2346,8 @@ module TMBSH
     end
 
     def truthy? : ::Bool
-      !@value.empty?
+      # !@value.empty?
+      true
     end
   end
 
