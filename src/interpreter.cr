@@ -74,6 +74,9 @@ module TMBSH
         if val = @constants[name]?
           return val
         end
+        if str = ENV[name]?
+          return String.new(str)
+        end
         if scope = find_scope(name)
           scope[name]
         else
@@ -125,12 +128,12 @@ module TMBSH
       def get_variable(name : ::String) : Variant
         @variable_stack[name]
       end
-
-      def set_pseudoconstants_from_env
-        ENV.each do |k, v|
-          @variable_stack.set_constant(k, String.new(v))
-        end
-      end
+      #
+      # def set_pseudoconstants_from_env
+      #   ENV.each do |k, v|
+      #     @variable_stack.set_constant(k, String.new(v))
+      #   end
+      # end
 
     def strict
       @strict
@@ -141,10 +144,14 @@ module TMBSH
       @variable_stack.strict = val
     end
 
-    def initialize(constants_from_env : ::Bool = true)
+    # def initialize(constants_from_env : ::Bool = true)
+    #   @variable_stack = VariableStack.new
+    #   @cwd = Dir.current
+    #   set_pseudoconstants_from_env if constants_from_env
+    # end
+    def initialize
       @variable_stack = VariableStack.new
       @cwd = Dir.current
-      set_pseudoconstants_from_env if constants_from_env
     end
 
     @aliases : Hash(::String, ::Array(::String)) = {} of ::String => ::Array(::String)

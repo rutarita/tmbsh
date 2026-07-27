@@ -20,18 +20,37 @@ class Interpreter
     }
   end
 
+  private macro cd(target)
+    unless ::Dir.exists?({{target}})
+      error_io.try &.puts "tmbsh: cd: #{{{target}}}: no such directory"
+      return CommandFinish.new(1)
+    end
+    ::Dir.cd({{target}})
+    current = Dir.current
+    interpreter.cwd = current
+    if old = ENV["PWD"]
+      ENV["OLDPWD"] = old
+    end
+    ENV["PWD"] = current
+  end
+
   CD_COMMAND = builtin do
     if args.size != 1
-      error_io.try &.puts "cd requires one argument"
+      error_io.try &.puts "tmbsh: cd: requires one argument"
       return CommandFinish.new(1)
     end
     target = args[0]
-    unless ::Dir.exists?(target)
-      error_io.try &.puts "tmbsh: cd: #{target}: no such directory"
-      return CommandFinish.new(1)
+    if target == "-"
+      if old = ENV["OLDPWD"]?
+        cd(old)
+        CommandFinish.new(0)
+      else
+        error_io.try &.puts "tmbsh: cd: OLDPWD not set"
+        CommandFinish.new(1)
+      end
+    else
+      cd(target)
     end
-    ::Dir.cd(target)
-    interpreter.cwd = Dir.current
     CommandFinish.new(0)
   end
   PWD_COMMAND = builtin do
