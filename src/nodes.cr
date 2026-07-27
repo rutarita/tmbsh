@@ -1010,6 +1010,16 @@ module TMBSH
           @file = ::File.open(target.evaluate(interpreter).to_s)
         end
       end
+
+      private def resolve_alias(interpreter : Interpreter, str_args : ::Deque(::String))
+        while ary = interpreter.resolve_alias(str_args[0])
+          str_args.shift
+          ary.reverse_each do |e|
+            str_args.unshift e
+          end
+        end
+      end
+
       @builtin_result : Result?
       def create_process(
         interpreter : Interpreter,
@@ -1020,6 +1030,7 @@ module TMBSH
         set_env_vars_from_pairs(interpreter)
         args = create_str_args(interpreter)
         return if args.empty?
+        resolve_alias(interpreter, args)
         command = args.shift
         if builtin = interpreter.get_builtin(command)
           # execute_builtin(builtin, args, input_io, output_io, error_io)

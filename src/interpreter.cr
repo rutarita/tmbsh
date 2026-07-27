@@ -93,13 +93,12 @@ module TMBSH
       end
     end
 
-    alias BuiltinCommand = Interpreter, IO?, IO?, IO?, ::Indexable(::String) -> Result
+    alias BuiltinCommand = Interpreter, IO?, IO?, IO?, ::Deque(::String) -> Result
     @builtins : Hash(::String, BuiltinCommand)  = BUILTIN_COMMANDS
     def get_builtin(name : ::String) : BuiltinCommand?
       @builtins[name]?
     end
     @variable_stack : VariableStack
-    @aliases : Hash(::String, ::String) = {} of ::String => ::String
     @strict : ::Bool = false
 
     @cwd : ::String
@@ -148,6 +147,16 @@ module TMBSH
       set_pseudoconstants_from_env if constants_from_env
     end
 
+    @aliases : Hash(::String, ::Array(::String)) = {} of ::String => ::Array(::String)
+
+    def resolve_alias(command : ::String) : ::Array(::String)?
+      @aliases[command]?
+    end
+
+    def add_alias(name : ::String, command : ::Array(::String))
+      @aliases[name] = command
+    end
+
     def execute_statement(statement : StatementNode) : Result
       statement.execute(self)
     end
@@ -157,9 +166,15 @@ module TMBSH
       until parser.token.kind.eof?
           begin
           statement = parser.parse_statement
-          res = execute_statement(statement)
           rescue e
-            puts "Exception occured: #{e.inspect}"
+            puts "tmsbh: Parsing error: #{e.inspect}"
+            # puts "trace: #{e.backtrace?}"
+            return
+          end
+          begin
+            res = execute_statement(statement)
+          rescue e
+            puts "tmbsh: Exception #{e.to_s}"
           end
           if res.is_a?(CommandFinish)
             status = res.status

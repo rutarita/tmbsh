@@ -68,7 +68,8 @@ module TMBSH
         .question?,
         .exclamation?,
         .assignment_to?,
-        .at?
+        .at?,
+        .equal?
           parse_string
         when .square_bracket_open?
           parse_array
@@ -178,6 +179,8 @@ module TMBSH
             end
           when .assignment_to?
             string_node.add_string(token.to_s)
+          when .equal?
+            string_node.add_string("=")
           when .splat?
             # unless string_mode.plain?
               string_node.add_multiple_wildcard
