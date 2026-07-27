@@ -2852,13 +2852,13 @@ module TMBSH
   end
 
   class ExitStatus < Variant
-    @value : Int32
+    @exit_code : Int32
 
     FLOAT_METHOD = TMBSH.method("float") do
-      Float.new(this.@value)
+      Float.new(this.@exit_code)
     end
     INT_METHOD = TMBSH.method("int") do
-      Float.new(this.@value)
+      Float.new(this.@exit_code)
     end
 
     @@methods = {
@@ -2876,20 +2876,20 @@ module TMBSH
 
     @@type_aliases = ::Set{"exit_status", "status"}
 
-    def initialize(status : Int32)
-      @value = status
+    def initialize(exit_code : Int32)
+      @exit_code = exit_code
     end
 
     def to_s : ::String
-      @value.to_s
+      @exit_code.to_s
     end
 
     def to_f64 : Float64
-      @value.to_f64
+      @exit_code.to_f64
     end
 
     def to_i64 : Int64
-      @value.to_i64
+      @exit_code.to_i64
     end
 
     def to_a : ::Array(Variant)
@@ -2905,7 +2905,7 @@ module TMBSH
     end
 
     def hash : UInt64
-      @value.hash
+      @exit_code.hash
     end
 
     def [](key : Variant) : Variant
@@ -2925,21 +2925,21 @@ module TMBSH
     end
 
     def ==(other : Variant)
-      return @value == other.@value if other.is_a?(ExitStatus)
+      return @exit_code == other.@exit_code if other.is_a?(ExitStatus)
       begin
         other_status = other.to_i64
-        @value == other_status
+        @exit_code == other_status
       rescue
         false
       end
     end
 
     def to_json : ::String
-      @value.to_json
+      @exit_code.to_json
     end
 
     def to_json(builder : JSON::Builder)
-      @value.to_json(builder)
+      @exit_code.to_json(builder)
     end
 
     def iter_init : Iterator
@@ -2947,7 +2947,7 @@ module TMBSH
     end
 
     def truthy? : ::Bool
-      @value == 0
+      @exit_code == 0
     end
   end
 end
