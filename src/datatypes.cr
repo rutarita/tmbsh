@@ -1291,24 +1291,25 @@ module TMBSH
     def join(sep : ::String = "") : ::String
       return "" if @value.empty?
       str_arr = @value.map &.to_s
+      str_arr.join(sep)
       # bytesize = str_arr.reduce(0) { |acc, item| acc + item.bytesize} + sep.bytesize * (str_arr.size - 1)
-      bytesize, codepoints_count = str_arr.reduce({0, 0}) { |acc, item| {acc[0] + item.bytesize, acc[1] + item.size}}
-      sep_count = str_arr.size - 1
-      bytesize += sep.bytesize * sep_count
-      codepoints_count += sep.size * sep_count
-      # codepoints_count = str_arr.reduce(0) { |acc, item| acc + item.size} + sep.size * (str_arr.size - 1)
-      ::String.new(bytesize) do |buffer|
-        io = buffer.appender
-        str_arr[0...-1].each do |item|
-          item.each_byte { |b| io << b }
-          sep.each_byte { |b| io << b}
-          # io << item
-          # io << sep
-        end
-        # io << str_arr[-1]
-        str_arr.last.each_byte { |b| io << b }
-        {bytesize, codepoints_count}
-      end
+      # bytesize, codepoints_count = str_arr.reduce({0, 0}) { |acc, item| {acc[0] + item.bytesize, acc[1] + item.size}}
+      # sep_count = str_arr.size - 1
+      # bytesize += sep.bytesize * sep_count
+      # codepoints_count += sep.size * sep_count
+      # # codepoints_count = str_arr.reduce(0) { |acc, item| acc + item.size} + sep.size * (str_arr.size - 1)
+      # ::String.new(bytesize) do |buffer|
+      #   io = buffer.appender
+      #   str_arr[0...-1].each do |item|
+      #     item.each_byte { |b| io << b }
+      #     sep.each_byte { |b| io << b}
+      #     # io << item
+      #     # io << sep
+      #   end
+      #   # io << str_arr[-1]
+      #   str_arr.last.each_byte { |b| io << b }
+      #   {bytesize, codepoints_count}
+      # end
     end
 
     def partition(func : Function) : Array
