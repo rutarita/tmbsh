@@ -174,13 +174,13 @@ module TMBSH
     private def execute_parsable(parsable)
       parser = Parser.new(parsable)
       until parser.token.kind.eof?
-          begin
+          # begin
           statement = parser.parse_statement
-          rescue e
-            puts "tmsbh: Parsing error: #{e.inspect}"
+          # rescue e
+            # puts "tmsbh: Parsing error: #{e.inspect}"
             # puts "trace: #{e.backtrace?}"
-            return
-          end
+            # return
+          # end
           begin
             execute_statement(statement)
           rescue e

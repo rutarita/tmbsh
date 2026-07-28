@@ -11,7 +11,7 @@ module TMBSH
     getter current_char : Char = '\0'
     # @current_string_delimiter : Char = '\0'
     @start_of_statement : ::Bool = true
-
+    property start_of_statement
     private def start_statement
       if @string_mode.plain?
         @start_of_statement = false
@@ -275,7 +275,7 @@ module TMBSH
           next_varname
         else
           str = consume_string
-          if current_char.in?(' ', '\n', ';', '\0')
+          if current_char.in?(' ', '\n', ';', '\0', '}')
             if @start_of_statement && str.size <= LONGEST_KEYWORD_LENGTH
               if kind = KEYWORDS[str]?
                 @token.kind = kind

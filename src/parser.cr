@@ -33,28 +33,6 @@ module TMBSH
       SingleApostrophe
       DoubleApostrophe
     end
-    #
-    # private def string_type_from_current_token : StringMode
-    #   if token.kind.single_apostrophe?
-    #       case string_mode
-    #         when .plain?
-    #           StringMode::SingleApostrophe
-    #           next
-    #         when .single_apostrophe?
-    #           StringMode::Plain
-    #           next
-    #       end
-    #     elsif token.kind.double_apostrophe?
-    #       case string_mode
-    #         when .plain?
-    #           StringMode::DoubleApostrophe
-    #           next
-    #         when .double_apostrophe?
-    #           StringMode::Plain
-    #           next
-    #       end
-    #     end
-    # end
 
 
     def parse_value : Interpreter::ValueNode
@@ -81,7 +59,6 @@ module TMBSH
           parse_numerical
         when .variable_access?
           next_token
-          # p! token
           if token.kind.parenthesis_open?
             @lexer.lex_varname = false
             parse_capture_command
@@ -95,8 +72,6 @@ module TMBSH
       end
       actions = parse_actions
       val.actions = actions
-      # puts "actions finished with #{val.inspect}"
-      # p! token
       val
     end
 
@@ -128,14 +103,10 @@ module TMBSH
       Token::Kind::ReadFromFile,
     })
     def parse_string : Interpreter::SingleValueNode | Interpreter::StringNode
-      # unexpected_token unless token.kind.string?
       string_mode = StringMode::Plain
       buf = IO::Memory.new
       string_node = Interpreter::StringNode.new
-      # buf << token.to_s
       loop do
-        # next_token
-        # p! token
         if token.kind.single_apostrophe?
           case string_mode
             when .plain?
@@ -291,15 +262,15 @@ module TMBSH
         NO_ARGUMENTS
       skip_whitespaces
       if token.kind.curly_bracket_open?
+        @lexer.start_of_statement = true
+        next_token
         block = parse_block(:CurlyBracketClose)
         next_token
       else
-        # puts "BUT BEFORE: #{token.inspect}"
         block = Interpreter::StatementBlockNode.new
         block << Interpreter::ReturnStatementNode.new(
           parse_value
         )
-        # puts "FROM HERE: #{token.inspect}"
       end
       Interpreter::LambdaNode.new(argnames, last_is_splat, optional_start_index, block)
     end
@@ -407,7 +378,7 @@ module TMBSH
     end
 
     def parse_statement(*stop_at) : Interpreter::StatementNode
-      # p! token
+      p!
       skip_whitespaces_and_newlines_and_semicolons
       # p! token
       assignments = parse_assignments
@@ -448,7 +419,7 @@ module TMBSH
           unexpected_token unless token.eos?
           Interpreter::BREAK_STATEMENT_NODE
         else
-          unless stop_at && token.kind.in?(stop_at)
+          unless token.kind.in?(stop_at)
             parse_command(*stop_at)
           else
             Interpreter::EMPTY_STATEMENT_NODE
@@ -538,7 +509,7 @@ module TMBSH
             target = parse_value
             command.file_read_target = target
           else
-            break if stop_at && token.kind.in?(stop_at)
+            break if token.kind.in?(stop_at)
             command << parse_value
         end
         # break if token.eos?
@@ -580,13 +551,17 @@ module TMBSH
 
     def parse_block(*stop_tokens : Token::Kind) : Interpreter::StatementBlockNode
       block = Interpreter::StatementBlockNode.new
+      @lexer.start_of_statement = true
+      skip_whitespaces_and_newlines_and_semicolons
       loop do
-        skip_whitespaces_and_newlines_and_semicolons
+        # skip_whitespaces_and_newlines_and_semicolons
         break if token.kind.in?(stop_tokens)
         unexpected_token if token.kind.eof?
+        puts
         statement = parse_statement(*stop_tokens)
         break if statement.is_a?(Interpreter::EmptyStatementNode)
         block << statement
+        skip_whitespaces_and_newlines_and_semicolons
       end
       block
     end
@@ -728,7 +703,7 @@ module TMBSH
       else
         Interpreter::ReturnStatementNode.new(parse_value)
       end
-      unexpected_token unless token.eos?
+      unexpected_token unless token.eos? || token.kind.curly_bracket_close?
       node
     end
 
