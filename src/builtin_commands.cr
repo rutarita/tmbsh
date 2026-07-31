@@ -85,7 +85,11 @@ HELP
   end
 
   EXPORT_COMMAND = builtin do
-
+    # temporary solution
+    args.each do |arg|
+      interpreter.export_variable(arg)
+    end
+    CommandFinish.new(0)
   end
 end
 end

@@ -149,8 +149,8 @@ module TMBSH
         @variable_stack[name]
       end
 
-      def export_variable(name : ::String) : Variant
-
+      def export_variable(name : ::String) : Nil
+        @variable_stack.export(name)
       end
       #
       # def set_pseudoconstants_from_env
@@ -198,13 +198,12 @@ module TMBSH
     private def execute_parsable(parsable)
       parser = Parser.new(parsable)
       until parser.token.kind.eof?
-          # begin
+          begin
           statement = parser.parse_statement
-          # rescue e
-            # puts "tmsbh: Parsing error: #{e.inspect}"
-            # puts "trace: #{e.backtrace?}"
-            # return
-          # end
+          rescue e
+            puts "tmsbh: Parsing error: #{e.to_s}"
+            return
+          end
           begin
             execute_statement(statement)
           rescue e

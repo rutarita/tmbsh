@@ -199,7 +199,7 @@ module TMBSH
             @token.raw_value = ">>"
           end
         else
-          next_char_string_or :WriteToFile
+          next_char_string_or :MoreThan
         end
       when '<'
         start_statement
@@ -214,7 +214,7 @@ module TMBSH
             @token.raw_value = "<<"
           end
         else
-          next_char_string_or :ReadFromFile
+          next_char_string_or :LessThan
         end
       when '='
         start_statement

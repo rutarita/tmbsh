@@ -99,8 +99,8 @@ module TMBSH
       Token::Kind::ArrowRight,
       Token::Kind::Pipe,
       Token::Kind::AppendToFile,
-      Token::Kind::WriteToFile,
-      Token::Kind::ReadFromFile,
+      Token::Kind::MoreThan,
+      Token::Kind::LessThan,
     })
     def parse_string : Interpreter::SingleValueNode | Interpreter::StringNode
       string_mode = StringMode::Plain
@@ -492,7 +492,7 @@ module TMBSH
             command.proceed_type = :Pipe
             command.proceeding = next_command
             break
-          when .write_to_file?
+          when .more_than?
             next_token
             skip_whitespaces_and_newlines
             target = parse_value
@@ -503,7 +503,7 @@ module TMBSH
             target = parse_value
             command.file_write_target = target
             command.write_to_file = false
-          when .read_from_file?
+          when .less_than?
             next_token
             skip_whitespaces_and_newlines
             target = parse_value
