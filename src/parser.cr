@@ -531,7 +531,7 @@ module TMBSH
       )
     end
 
-    def parse_condition : Interpreter::ConditionNode
+    def parse_condition(enclosed : ::Bool = false) : Interpreter::ConditionNode
       condition = Interpreter::ConditionNode.new
       loop do
         negated = false
@@ -539,13 +539,19 @@ module TMBSH
           negated = true
           next_token
         end
-        val = parse_value
+        val = if token.kind.parenthesis_open?
+          next_token
+          skip_whitespaces_and_newlines
+          parse_condition(true)
+        else
+          parse_value
+        end
         skip_whitespaces
         case token.kind
           when .double_equal?
             get_other_value_and_call_method_on_val("eq")
           when .not_equal?
-            get_other_value_and_call_method_on_val("neq") # i guess i have to add this
+            get_other_value_and_call_method_on_val("neq")
           when .greater_than?
             get_other_value_and_call_method_on_val("gt")
           when .less_than?
@@ -568,6 +574,13 @@ module TMBSH
           when .eos?
             next_token
             break
+          when .parenthesis_close?
+            if enclosed
+              next_token
+              break
+            else
+              unexpected_token
+            end
           else
             unexpected_token
         end
