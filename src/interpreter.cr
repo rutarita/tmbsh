@@ -85,14 +85,34 @@ module TMBSH
         end
       end
 
+      private def set_env(name : ::String, value : Variant) : Nil
+          # return if val.is_a?(Null)
+          if value.is_a?(Array)
+            ENV[name] = value.join(":")
+          elsif value.is_a?(Null)
+            ENV.delete(name)
+          else
+            ENV[name] = value.to_s
+          end
+      end
+
       def []=(name : ::String, value : Variant) : Nil
         return if name == "_"
+        if ENV[name]?
+          set_env(name, value)
+          return
+        end
         scope = find_scope(name) || @vars.last
         if !@strict && value == TMBSH::NULL
           scope.delete(name)
         else
           scope[name] = value
         end
+      end
+
+      def export(name : ::String)
+        val = self[name]
+        set_env(name, val)
       end
     end
 
@@ -127,6 +147,10 @@ module TMBSH
 
       def get_variable(name : ::String) : Variant
         @variable_stack[name]
+      end
+
+      def export_variable(name : ::String) : Variant
+
       end
       #
       # def set_pseudoconstants_from_env
@@ -203,6 +227,19 @@ module TMBSH
 
     def reset
       @variable_stack = VariableStack.new
+      @variable_stack.strict = @strict
+    end
+
+
+    @variable_stack_stack : ::Array(VariableStack) = [] of VariableStack
+    def enter_variable_context
+      @variable_stack_stack << @variable_stack
+      @variable_stack = VariableStack.new
+      @variable_stack.strict = @strict
+    end
+
+    def exit_variable_context
+      @variable_stack = @variable_stack_stack.pop
       @variable_stack.strict = @strict
     end
   end

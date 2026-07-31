@@ -3,15 +3,13 @@ require "./interpreter"
 module TMBSH
 class Interpreter
   BUILTIN_COMMANDS = {
-    "test" => builtin do
-      if output_io
-        output_io.puts "tests really loud"
-      end
-      NOTHING_RESULT
-    end,
     "cd" => CD_COMMAND,
     "pwd" => PWD_COMMAND,
     "alias" => ALIAS_COMMAND,
+    "export" => EXPORT_COMMAND,
+    "exit"  => builtin do
+      exit
+    end
   } of ::String => BuiltinCommand
 
   private macro builtin(&body)
@@ -84,6 +82,10 @@ HELP
       output_io.try &.puts ALIAS_HELP
       CommandFinish.new(0)
     end
+  end
+
+  EXPORT_COMMAND = builtin do
+
   end
 end
 end
