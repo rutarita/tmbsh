@@ -47,7 +47,10 @@ module TMBSH
         .exclamation?,
         .assignment_to?,
         .at?,
-        .equal?
+        .equal?,
+        .greater_than_or_equal?,
+        .less_than_or_equal?,
+        .double_equal?
           parse_string
         when .square_bracket_open?
           parse_array
@@ -99,7 +102,7 @@ module TMBSH
       Token::Kind::ArrowRight,
       Token::Kind::Pipe,
       Token::Kind::AppendToFile,
-      Token::Kind::MoreThan,
+      Token::Kind::GreaterThan,
       Token::Kind::LessThan,
     })
     def parse_string : Interpreter::SingleValueNode | Interpreter::StringNode
@@ -492,7 +495,7 @@ module TMBSH
             command.proceed_type = :Pipe
             command.proceeding = next_command
             break
-          when .more_than?
+          when .greater_than?
             next_token
             skip_whitespaces_and_newlines
             target = parse_value
@@ -519,6 +522,15 @@ module TMBSH
       command
     end
 
+    private macro get_other_value_and_call_method_on_val(method)
+      next_token
+      skip_whitespaces_and_newlines
+      other = parse_value
+      val.add_action(
+        TMBSH::Interpreter::MethodCall.new({{method}}, [other] of TMBSH::Interpreter::ValueNode)
+      )
+    end
+
     def parse_condition : Interpreter::ConditionNode
       condition = Interpreter::ConditionNode.new
       loop do
@@ -528,8 +540,22 @@ module TMBSH
           next_token
         end
         val = parse_value
-        condition.add_condition(val, negated)
         skip_whitespaces
+        case token.kind
+          when .double_equal?
+            get_other_value_and_call_method_on_val("eq")
+          when .not_equal?
+            get_other_value_and_call_method_on_val("neq") # i guess i have to add this
+          when .greater_than?
+            get_other_value_and_call_method_on_val("gt")
+          when .less_than?
+            get_other_value_and_call_method_on_val("lt")
+          when .greater_than_or_equal?
+            get_other_value_and_call_method_on_val("gte")
+          when .less_than_or_equal?
+            get_other_value_and_call_method_on_val("lte")
+        end
+        condition.add_condition(val, negated)
         case token.kind
           when .and_operator?
             next_token
@@ -557,7 +583,6 @@ module TMBSH
         # skip_whitespaces_and_newlines_and_semicolons
         break if token.kind.in?(stop_tokens)
         unexpected_token if token.kind.eof?
-        puts
         statement = parse_statement(*stop_tokens)
         break if statement.is_a?(Interpreter::EmptyStatementNode)
         block << statement

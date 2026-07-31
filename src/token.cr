@@ -31,9 +31,14 @@ class Token
 
     Ampersand
     AppendToFile
-    MoreThan # WriteToFile
+    GreaterThan # WriteToFile
     LessThan # ReadFromFile
     Pipe
+
+    GreaterThanOrEqual
+    LessThanOrEqual
+    DoubleEqual
+    NotEqual
 
     AssignmentTo
 
@@ -98,8 +103,12 @@ class Token
       in .and_operator? then "&&"
       in .or_operator? then "||"
       in .append_to_file? then ">>"
-      in .more_than? then ">"
+      in .greater_than? then ">"
       in .less_than? then "<"
+      in .greater_than_or_equal? then ">="
+      in .less_than_or_equal? then "<="
+      in .double_equal? then "=="
+      in .not_equal? then "!="
       in .equal? then "="
       in .percent? then "%"
       in .heredoc_begin? then "<<"

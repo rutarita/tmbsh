@@ -152,7 +152,19 @@ module TMBSH
         next_char_string_or_varname_or :Question
       when '!'
         start_statement
-        next_char_string_or_varname_or :Exclamation
+        if peek_char == '='
+          if @string_mode.plain?
+              next_char
+              next_char :NotEqual
+            else
+              next_char
+              next_char
+              @token.kind = :String
+              @token.raw_value = "!="
+          end
+        else
+          next_char_string_or_varname_or :Exclamation
+        end
       when '&'
         start_statement
         if peek_char == '&'
@@ -188,7 +200,8 @@ module TMBSH
         next_char_string_or :Percent
       when '>'
         start_statement
-        if peek_char == '>'
+        case peek_char
+        when '>'
           if @string_mode.plain?
             next_char
             next_char :AppendToFile
@@ -198,12 +211,23 @@ module TMBSH
             @token.kind = :String
             @token.raw_value = ">>"
           end
+        when '='
+          if @string_mode.plain?
+            next_char
+            next_char :GreaterThanOrEqual
+          else
+            next_char
+            next_char
+            @token.kind = :String
+            @token.raw_value = ">="
+          end
         else
-          next_char_string_or :MoreThan
+          next_char_string_or :GreaterThan
         end
       when '<'
         start_statement
-        if peek_char == '<'
+        case peek_char
+        when '<'
           if @string_mode.plain?
             next_char
             next_char :HeredocBegin
@@ -213,12 +237,34 @@ module TMBSH
             @token.kind = :String
             @token.raw_value = "<<"
           end
+        when '='
+          if @string_mode.plain?
+            next_char
+            next_char :LessThanOrEqual
+          else
+            next_char
+            next_char
+            @token.kind = :String
+            @token.raw_value = "<="
+          end
         else
           next_char_string_or :LessThan
         end
       when '='
         start_statement
-        next_char_string_or :Equal
+        if peek_char == '='
+          if @string_mode.plain?
+            next_char
+            next_char :DoubleEqual
+          else
+            next_char
+            next_char
+            @token.kind = :String
+            @token.raw_value = "=="
+          end
+        else
+          next_char_string_or :Equal
+        end
       when ' ', '\t'
         # next_char :Whitespace
         if @string_mode.plain?

@@ -1,5 +1,6 @@
 require "json"
 require "./exceptions"
+
 module TMBSH
   macro abstract_method(name, &body)
     Function.new(self.to_s.lchop("TMBSH::"), {{name}}, ->(args : ::Array(Variant)) : Variant? {
@@ -19,33 +20,33 @@ module TMBSH
   protected def self.variant_from_json(json : JSON::Any) : Variant
     raw = json.raw
     case raw
-      in ::String then String.new(raw)
-      in ::Int64 then Int.new(raw)
-      in ::Float64 then Float.new(raw)
-      in ::Array(JSON::Any)
-        variants = raw.map do |item|
-          variant_from_json(item)
-        end
-        Array.new(variants)
-      in ::Bool then raw ? TRUE : FALSE
-      in ::Hash(::String, JSON::Any)
-        map = {} of Variant => Variant
-        raw.each do |k, v|
-          map[String.new(k)] = variant_from_json(v)
-        end
-        Dictionary.new(map)
-      in Nil then NULL
+    in ::String  then String.new(raw)
+    in ::Int64   then Int.new(raw)
+    in ::Float64 then Float.new(raw)
+    in ::Array(JSON::Any)
+      variants = raw.map do |item|
+        variant_from_json(item)
+      end
+      Array.new(variants)
+    in ::Bool then raw ? TRUE : FALSE
+    in ::Hash(::String, JSON::Any)
+      map = {} of Variant => Variant
+      raw.each do |k, v|
+        map[String.new(k)] = variant_from_json(v)
+      end
+      Dictionary.new(map)
+    in Nil then NULL
     end
   end
 
-    macro variant(val)
+  macro variant(val)
       {% if val.is_a?(::String) %}
         String.new(val)
       {% elsif val.is_a?(::Int) %}
         Int.new(val)
       {% elsif val.is_a?(::Float) %}
         Float.new(val)
-      {% elsif val.is_a?(::Array)%}
+      {% elsif val.is_a?(::Array) %}
         Array.new(val.map { |item| variant(val)})
       {% end %}
     end
@@ -74,6 +75,10 @@ module TMBSH
       this == (args[1]? || NULL) ? TRUE : FALSE
     end
 
+    NEQ_METHOD = TMBSH.abstract_method("neq") do
+      this == (args[1]? || NULL) ? FALSE : TRUE
+    end
+
     STR_METHOD = TMBSH.abstract_method("str") do
       String.new(this.to_s)
     end
@@ -96,6 +101,7 @@ module TMBSH
     abstract def to_f64 : Float64
 
     abstract def to_i64 : Int64
+
     def to_i : Int32
       to_i64.to_i
     end
@@ -137,17 +143,17 @@ module TMBSH
     abstract def iter_init : Iterator
 
     abstract def truthy? : ::Bool
-    {% if flag?(:method_hash_caching)%}
-    def get_method(method_hash : UInt64) : Function?
-      @@methods_hash_cache[method_hash]?
-    end
-    {% end %}
 
+    {% if flag?(:method_hash_caching) %}
+      def get_method(method_hash : UInt64) : Function?
+        @@methods_hash_cache[method_hash]?
+      end
+    {% end %}
 
     def get_method(name : ::String)
       if method = @@methods[name]?
         {% if flag?(:method_hash_caching) %}
-        @@methods_hash_cache[name.hash] = method
+          @@methods_hash_cache[name.hash] = method
         {% end %}
         method
       else
@@ -166,16 +172,16 @@ module TMBSH
     end
   end
 
-
   abstract class Iterator < Variant
-
     private module IteratorBoilerplate
       @iterator : Iterator
       @func : Function
+
       def initialize(iterator : Iterator, func : Function)
         @iterator = iterator
         @func = func
       end
+
       def clone : self
         self.class.new(@iterator.clone, @func)
       end
@@ -193,11 +199,9 @@ module TMBSH
         return unless val
         @func.call([val] of Variant)
       end
-
     end
 
     class SelectIterator < Iterator
-
       include IteratorBoilerplate
 
       def iter_next : Variant?
@@ -210,8 +214,8 @@ module TMBSH
         end
       end
     end
-    class RejectIterator < Iterator
 
+    class RejectIterator < Iterator
       include IteratorBoilerplate
 
       def iter_next : Variant?
@@ -224,7 +228,6 @@ module TMBSH
         end
       end
     end
-
 
     NEXT_METHOD = TMBSH.method("next") do
       this.iter_next || NULL
@@ -250,17 +253,18 @@ module TMBSH
     @@methods = {
       "next"   => NEXT_METHOD,
       "to_a"   => TO_A_METHOD,
-      "eq?"    => EQ_METHOD,
+      "eq"     => EQ_METHOD,
+      "neq"    => NEQ_METHOD,
       "str"    => STR_METHOD,
       "map"    => MAP_METHOD,
       "select" => SELECT_METHOD,
       "reject" => REJECT_METHOD,
       "fold"   => FOLD_METHOD,
 
-      "orelse" => ORELSE_METHOD,
+      "orelse"  => ORELSE_METHOD,
       "truthy?" => TRUTHY_METHOD,
-      "dup"   => DUP_METHOD,
-      "clone" => CLONE_METHOD,
+      "dup"     => DUP_METHOD,
+      "clone"   => CLONE_METHOD,
     } of ::String => Function
 
     @@type_aliases = ::Set{"iter", "iterator"}
@@ -333,7 +337,7 @@ module TMBSH
       true
     end
 
-    {% for itertype in ["map", "select", "reject"]%}
+    {% for itertype in ["map", "select", "reject"] %}
       def {{itertype.id}}(func : Function)
         {{itertype.id.titleize}}Iterator.new(self, func)
       end
@@ -345,10 +349,9 @@ module TMBSH
       end
       into
     end
-
   end
 
-  macro num_type_def(name,num_type, conversion)
+  macro num_type_def(name, num_type, conversion)
   class {{name}} < Variant
     class NumberIterator < Iterator
       @current : {{num_type}} = {{num_type}}.zero
@@ -563,7 +566,7 @@ module TMBSH
       "toe"         => TOE_METHOD,
 
       "is_a?"       => IS_A_METHOD,
-      "eq?"         => EQ_METHOD,
+      "eq"         => EQ_METHOD,
       "eq"          => EQ_METHOD,
       "orelse"      => ORELSE_METHOD,
       "truthy?" => TRUTHY_METHOD,
@@ -757,18 +760,19 @@ module TMBSH
     end
 
     @@methods = {
-      "begin"  => BEGIN_METHOD,
-      "end"    => END_METHOD,
-      "to_a"   => TO_A_METHOD,
-      "iter"   => ITER_METHOD,
-      "str"    => STR_METHOD,
+      "begin" => BEGIN_METHOD,
+      "end"   => END_METHOD,
+      "to_a"  => TO_A_METHOD,
+      "iter"  => ITER_METHOD,
+      "str"   => STR_METHOD,
 
       "truthy?" => TRUTHY_METHOD,
-      "is_a?"  => IS_A_METHOD,
-      "eq?"    => EQ_METHOD,
-      "orelse" => ORELSE_METHOD,
-      "dup"   => DUP_METHOD,
-      "clone" => CLONE_METHOD,
+      "is_a?"   => IS_A_METHOD,
+      "eq"      => EQ_METHOD,
+      "neq"     => NEQ_METHOD,
+      "orelse"  => ORELSE_METHOD,
+      "dup"     => DUP_METHOD,
+      "clone"   => CLONE_METHOD,
     } of ::String => Function
 
     @@type_aliases = ::Set{"range"}
@@ -1042,48 +1046,48 @@ module TMBSH
     end
 
     @@methods = {
-      "size"     => SIZE_METHOD,
-      "append"   => APPEND_METHOD,
-      "fetch"    => FETCH_METHOD,
-      "pop"      => POP_METHOD,
-      "ap"       => APPEND_METHOD,
-      "delete"   => DELETE_METHOD,
-      "del"      => DELETE_METHOD,
-      "concat"   => CONCAT_METHOD,
-      "join"     => JOIN_METHOD,
-      "reverse"  => REVERSE_METHOD,
-      "clear"    => CLEAR_METHOD,
-      "str"      => STR_METHOD,
-      "sum"      => SUM_METHOD,
-      "map"      => MAP_METHOD,
-      "map!"     => MAP_IN_PLACE_METHOD,
-      "select"   => SELECT_METHOD,
-      "select!"  => SELECT_IN_PLACE_METHOD,
-      "reject"   => REJECT_METHOD,
-      "reject!"  => REJECT_IN_PLACE_METHOD,
+      "size"      => SIZE_METHOD,
+      "append"    => APPEND_METHOD,
+      "fetch"     => FETCH_METHOD,
+      "pop"       => POP_METHOD,
+      "ap"        => APPEND_METHOD,
+      "delete"    => DELETE_METHOD,
+      "del"       => DELETE_METHOD,
+      "concat"    => CONCAT_METHOD,
+      "join"      => JOIN_METHOD,
+      "reverse"   => REVERSE_METHOD,
+      "clear"     => CLEAR_METHOD,
+      "str"       => STR_METHOD,
+      "sum"       => SUM_METHOD,
+      "map"       => MAP_METHOD,
+      "map!"      => MAP_IN_PLACE_METHOD,
+      "select"    => SELECT_METHOD,
+      "select!"   => SELECT_IN_PLACE_METHOD,
+      "reject"    => REJECT_METHOD,
+      "reject!"   => REJECT_IN_PLACE_METHOD,
       "partition" => PARTITION_METHOD,
-      "reduce"   => REDUCE_METHOD,
-      "find"     => FIND_METHOD,
-      "shift"    => SHIFT_METHOD,
-      "unshift"  => UNSHIFT_METHOD,
-      "resize"   => RESIZE_METHOD,
-      "includes?"=> INCLUDES_METHOD,
-      "has"      => INCLUDES_METHOD,
+      "reduce"    => REDUCE_METHOD,
+      "find"      => FIND_METHOD,
+      "shift"     => SHIFT_METHOD,
+      "unshift"   => UNSHIFT_METHOD,
+      "resize"    => RESIZE_METHOD,
+      "includes?" => INCLUDES_METHOD,
+      "has"       => INCLUDES_METHOD,
       "has?"      => INCLUDES_METHOD,
 
       "decode" => DECODE_METHOD,
 
-      "to_json"  => TO_JSON_METHOD,
+      "to_json" => TO_JSON_METHOD,
 
       "is_a?"    => IS_A_METHOD,
       "iter"     => ITER_METHOD,
-      "truthy?" => TRUTHY_METHOD,
-      "eq?"      => EQ_METHOD,
+      "truthy?"  => TRUTHY_METHOD,
+      "eq"      => EQ_METHOD,
       "sort"     => SORT_METHOD,
       "sort_num" => SORT_NUM_METHOD,
       "orelse"   => ORELSE_METHOD,
-      "dup"   => DUP_METHOD,
-      "clone" => CLONE_METHOD,
+      "dup"      => DUP_METHOD,
+      "clone"    => CLONE_METHOD,
     } of ::String => Function
 
     @@type_aliases = ::Set{"arr", "array", "list"}
@@ -1095,7 +1099,6 @@ module TMBSH
     def initialize(arr : ::Array(Variant))
       @value = arr
     end
-
 
     delegate size, to: @value
 
@@ -1114,6 +1117,7 @@ module TMBSH
     def to_f64 : Float64
       raise TypeError.new("Cannot convert Array type to Float")
     end
+
     def to_i64 : Int64
       raise TypeError.new("Cannot convert Array type to Int")
     end
@@ -1139,7 +1143,7 @@ module TMBSH
     end
 
     def []=(key : Variant, value : Variant)
-        @value[key.to_i64] = value
+      @value[key.to_i64] = value
     end
 
     def call(args : ::Array(Variant)) : Variant
@@ -1193,14 +1197,14 @@ module TMBSH
     end
 
     def sum : Float
-      res = @value.reduce(0.0) { |acc, item| acc + item.to_f64}
+      res = @value.reduce(0.0) { |acc, item| acc + item.to_f64 }
       Float.new(res)
     end
 
     def sort! : self
       # to_s operations can be expensive like on arrays so we can precalculate them
       pairs = @value.map { |item| {item, item.to_s} }
-      pairs.sort! {|left, right| left[1] <=> right[1]}
+      pairs.sort! { |left, right| left[1] <=> right[1] }
       sorted_arr = pairs.map { |v, _| v }
       @value = sorted_arr
       self
@@ -1212,7 +1216,7 @@ module TMBSH
 
     def sort_num : Array
       pairs = @value.map { |item| {item, item.to_f64} }
-      pairs.sort! {|left, right| left[1] <=> right[1]}
+      pairs.sort! { |left, right| left[1] <=> right[1] }
       sorted_arr = pairs.map { |v, _| v }
       Array.new(sorted_arr)
     end
@@ -1326,7 +1330,7 @@ module TMBSH
     end
 
     def decode : String
-      arr = @value.map {|v| v.to_u8}
+      arr = @value.map { |v| v.to_u8 }
       slice = Bytes.new(arr.size) do |i|
         arr[i]
       end
@@ -1344,7 +1348,7 @@ module TMBSH
       this
     end
 
-    {%for i in ["subset_of", "superset_of"]%}
+    {% for i in ["subset_of", "superset_of"] %}
       {{i.id.upcase}}_METHOD = TMBSH.method("{{i.id.upcase}}") do
         raise ArgumentError.new("Expected one argument") unless args.size == 2
         other = args[1]
@@ -1358,7 +1362,7 @@ module TMBSH
         raise TypeError.new("Expected the argument to be of type Set") unless other.is_a?(Set)
         this.proper_{{i.id}}?(other) ? TRUE : FALSE
       end
-    {%end%}
+    {% end %}
     # SUBSET_OF_METHOD = TMBSH.method("subset_of") do
     #   raise "Expected one argument" unless args.size == 2
     #   this.subset_of?(args[1])
@@ -1432,32 +1436,32 @@ module TMBSH
     end
 
     @@methods = {
-      "add"        => ADD_METHOD,
-      "delete"     => DELETE_METHOD,
-      "del"        => DELETE_METHOD,
-      "includes?"  => INCLUDES_METHOD,
-      "has?"       => INCLUDES_METHOD,
-      "has"        => INCLUDES_METHOD,
-      "union"      => UNION_METHOD,
-      "diff"       => DIFFERENCE_METHOD,
-      "difference" => DIFFERENCE_METHOD,
-      "and"        => AND_METHOD,
-      "or"         => OR_METHOD,
-      "xor"        => XOR_METHOD,
-      "subset_of?" => SUBSET_OF_METHOD,
-      "proper_subset_of?" => PROPER_SUBSET_OF_METHOD,
-      "superset_of?" => SUPERSET_OF_METHOD,
+      "add"                 => ADD_METHOD,
+      "delete"              => DELETE_METHOD,
+      "del"                 => DELETE_METHOD,
+      "includes?"           => INCLUDES_METHOD,
+      "has?"                => INCLUDES_METHOD,
+      "has"                 => INCLUDES_METHOD,
+      "union"               => UNION_METHOD,
+      "diff"                => DIFFERENCE_METHOD,
+      "difference"          => DIFFERENCE_METHOD,
+      "and"                 => AND_METHOD,
+      "or"                  => OR_METHOD,
+      "xor"                 => XOR_METHOD,
+      "subset_of?"          => SUBSET_OF_METHOD,
+      "proper_subset_of?"   => PROPER_SUBSET_OF_METHOD,
+      "superset_of?"        => SUPERSET_OF_METHOD,
       "proper_superset_of?" => PROPER_SUPERSET_OF_METHOD,
-      "to_a"       => TO_A_METHOD,
-      "clear"      => CLEAR_METHOD,
+      "to_a"                => TO_A_METHOD,
+      "clear"               => CLEAR_METHOD,
 
-      "is_a?"      => IS_A_METHOD,
-      "eq?"        => EQ_METHOD,
-      "str"        => STR_METHOD,
-      "orelse"     => ORELSE_METHOD,
+      "is_a?"   => IS_A_METHOD,
+      "eq"     => EQ_METHOD,
+      "str"     => STR_METHOD,
+      "orelse"  => ORELSE_METHOD,
       "truthy?" => TRUTHY_METHOD,
-      "dup"   => DUP_METHOD,
-      "clone" => CLONE_METHOD,
+      "dup"     => DUP_METHOD,
+      "clone"   => CLONE_METHOD,
     } of ::String => Function
 
     @@type_aliases = ::Set{"set", "hash"}
@@ -1575,7 +1579,7 @@ module TMBSH
       @value.delete item
     end
 
-    {%for i in ["subset_of", "superset_of"]%}
+    {% for i in ["subset_of", "superset_of"] %}
       def {{i.id}}?(other : Set) : ::Bool
         @value.{{i.id}}?(other.@value)
       end
@@ -1583,7 +1587,7 @@ module TMBSH
       def proper_{{i.id}}?(other : Set) : ::Bool
         @value.proper_{{i.id}}?(other.@value)
       end
-    {%end%}
+    {% end %}
 
     def concat(other : Variant)
       @value.concat(other.to_a)
@@ -1642,11 +1646,10 @@ module TMBSH
     end
 
     class DirIterator < Iterator
-
       @dir_iter : ::Iterator(::String)
 
       def initialize(path : ::String | Path)
-        @dir_iter =  Dir.new(path).each_child
+        @dir_iter = Dir.new(path).each_child
       end
 
       def clone : self
@@ -1661,11 +1664,11 @@ module TMBSH
         val = @dir_iter.next
         return val.is_a?(::String) ? String.new(val) : nil
       end
-
     end
 
     class WalkIterator < Iterator
       @next_dirs : ::Deque(::Array(Path)) = Deque(::Array(Path)).new
+
       def initialize(path : ::String | Path)
         raise ArgumentError.new("Expected directory to walk") unless Dir.exists?(path)
         @next_dirs << [Path[path]] of Path
@@ -1677,8 +1680,8 @@ module TMBSH
           entries = Dir.children(path)
           dirs, files = entries.partition { |entry| Dir.exists?(path / entry) }
           @next_dirs << dirs.map { |dir| path / dir } unless dirs.empty?
-          dirs = Array.new(dirs.map {|e| String.new(e).as(Variant)})
-          files = Array.new(files.map {|e| String.new(e).as(Variant)})
+          dirs = Array.new(dirs.map { |e| String.new(e).as(Variant) })
+          files = Array.new(files.map { |e| String.new(e).as(Variant) })
           path = String.new(path.to_s)
           @next_dirs.shift if first.empty?
           Array.new([path, dirs, files] of Variant)
@@ -1893,13 +1896,13 @@ module TMBSH
     INT_METHOD = TMBSH.method("int") do
       base = (args[1]?.try &.to_i64) || 10
       if res = this.@value.to_i64?(base)
-      Int.new(res)
+        Int.new(res)
       end
     end
 
     FLOAT_METHOD = TMBSH.method("float") do
       if res = this.@value.to_f64?
-      Float.new(res)
+        Float.new(res)
       end
     end
 
@@ -1951,31 +1954,31 @@ module TMBSH
       "str"          => STR_METHOD,
       "reverse"      => REVERSE_METHOD,
       "encode"       => ENCODE_METHOD,
-      "float"          => FLOAT_METHOD,
+      "float"        => FLOAT_METHOD,
       "int"          => INT_METHOD,
       # filesystem methods
-      "dir?"         => IS_DIR_METHOD,
-      "file?"        => IS_FILE_METHOD,
-      "absolute"     => ABSOLUTE_METHOD,
-      "abs"          => ABSOLUTE_METHOD,
-      "walk"         => WALK_METHOD,
-      "stat"         => STAT_METHOD,
-      "info"         => STAT_METHOD,
-      "read"         => READ_METHOD,
-      "open"         => OPEN_METHOD,
-      "exists?"      => EXISTS_METHOD,
-      "iterdir"      => ITERDIR_METHOD,
+      "dir?"     => IS_DIR_METHOD,
+      "file?"    => IS_FILE_METHOD,
+      "absolute" => ABSOLUTE_METHOD,
+      "abs"      => ABSOLUTE_METHOD,
+      "walk"     => WALK_METHOD,
+      "stat"     => STAT_METHOD,
+      "info"     => STAT_METHOD,
+      "read"     => READ_METHOD,
+      "open"     => OPEN_METHOD,
+      "exists?"  => EXISTS_METHOD,
+      "iterdir"  => ITERDIR_METHOD,
 
-      "to_json"      => TO_JSON_METHOD,
-      "from_json"    => FROM_JSON_METHOD,
+      "to_json"   => TO_JSON_METHOD,
+      "from_json" => FROM_JSON_METHOD,
 
-      "is_a?"        => IS_A_METHOD,
-      "iter"         => ITER_METHOD,
-      "eq?"          => EQ_METHOD,
-      "orelse"       => ORELSE_METHOD,
+      "is_a?"   => IS_A_METHOD,
+      "iter"    => ITER_METHOD,
+      "eq"     => EQ_METHOD,
+      "orelse"  => ORELSE_METHOD,
       "truthy?" => TRUTHY_METHOD,
-      "dup"   => DUP_METHOD,
-      "clone" => CLONE_METHOD,
+      "dup"     => DUP_METHOD,
+      "clone"   => CLONE_METHOD,
     } of ::String => Function
 
     @@type_aliases = ::Set{"str", "string", "text"}
@@ -1997,7 +2000,8 @@ module TMBSH
     def to_f64 : Float64
       @value.to_f64
     end
-    #TODO: rework method do support conversion from other bases
+
+    # TODO: rework method do support conversion from other bases
     def to_i64 : Int64
       @value.to_i64
     end
@@ -2099,22 +2103,22 @@ module TMBSH
       puts @value
       return unless info
       info_hash = {
-        String.new("directory?") => info.directory? ? TRUE : FALSE,
-        String.new("file?") => info.file? ? TRUE : FALSE,
-        String.new("symlink?") => info.symlink? ? TRUE : FALSE,
-        String.new("flags") => Int.new(info.flags.to_i64),
-        String.new("group_id") => String.new(info.group_id),
-        String.new("owner_id") => String.new(info.owner_id),
-        String.new("modification_time") => Int.new(info.modification_time.to_unix),
+        String.new("directory?")           => info.directory? ? TRUE : FALSE,
+        String.new("file?")                => info.file? ? TRUE : FALSE,
+        String.new("symlink?")             => info.symlink? ? TRUE : FALSE,
+        String.new("flags")                => Int.new(info.flags.to_i64),
+        String.new("group_id")             => String.new(info.group_id),
+        String.new("owner_id")             => String.new(info.owner_id),
+        String.new("modification_time")    => Int.new(info.modification_time.to_unix),
         String.new("modification_time_ns") => Int.new(info.modification_time.nanosecond),
-        String.new("permissions") => Int.new(info.permissions.to_i64),
-        String.new("size")      => Int.new(info.size),
+        String.new("permissions")          => Int.new(info.permissions.to_i64),
+        String.new("size")                 => Int.new(info.size),
       } of Variant => Variant
       Dictionary.new(info_hash)
     end
 
     def encode : Array
-      Array.new(@value.to_slice.to_a.map { |v| Int.new(v).as(Variant)})
+      Array.new(@value.to_slice.to_a.map { |v| Int.new(v).as(Variant) })
     end
 
     def iterdir
@@ -2223,12 +2227,12 @@ module TMBSH
       "pairs"      => PAIRS_METHOD,
       "iter"       => ITER_METHOD,
 
-      "is_a?"      => IS_A_METHOD,
-      "eq?"        => EQ_METHOD,
-      "orelse"     => ORELSE_METHOD,
+      "is_a?"   => IS_A_METHOD,
+      "eq"     => EQ_METHOD,
+      "orelse"  => ORELSE_METHOD,
       "truthy?" => TRUTHY_METHOD,
-      "dup"   => DUP_METHOD,
-      "clone" => CLONE_METHOD,
+      "dup"     => DUP_METHOD,
+      "clone"   => CLONE_METHOD,
     } of ::String => Function
 
     @@type_aliases = ::Set{"dict", "hash", "dictionary"}
@@ -2367,13 +2371,14 @@ module TMBSH
       "r"      => RANGE_METHOD,
       "er"     => ERANGE_METHOD,
 
-      "is_a?"  => IS_A_METHOD,
-      "eq?"    => EQ_METHOD,
-      "str"    => STR_METHOD,
-      "orelse" => ORELSE_METHOD,
+      "is_a?"   => IS_A_METHOD,
+      "eq"      => EQ_METHOD,
+      "neq"     => NEQ_METHOD,
+      "str"     => STR_METHOD,
+      "orelse"  => ORELSE_METHOD,
       "truthy?" => TRUTHY_METHOD,
-      "dup"   => DUP_METHOD,
-      "clone" => CLONE_METHOD,
+      "dup"     => DUP_METHOD,
+      "clone"   => CLONE_METHOD,
     } of ::String => Function
 
     @@type_aliases = ::Set{"null", "nil", "none"}
@@ -2481,16 +2486,17 @@ module TMBSH
     end
 
     @@methods = {
-      "or"     => OR_METHOD,
-      "and"    => AND_METHOD,
-      "str"    => STR_METHOD,
+      "or"  => OR_METHOD,
+      "and" => AND_METHOD,
+      "str" => STR_METHOD,
 
-      "is_a?"  => IS_A_METHOD,
-      "eq?"    => EQ_METHOD,
-      "orelse" => ORELSE_METHOD,
+      "is_a?"   => IS_A_METHOD,
+      "eq"      => EQ_METHOD,
+      "neq"     => NEQ_METHOD,
+      "orelse"  => ORELSE_METHOD,
       "truthy?" => TRUTHY_METHOD,
-      "dup"   => DUP_METHOD,
-      "clone" => CLONE_METHOD,
+      "dup"     => DUP_METHOD,
+      "clone"   => CLONE_METHOD,
     } of ::String => Function
 
     @@type_aliases = ::Set{"bool", "boolean", "the universal"}
@@ -2576,15 +2582,16 @@ module TMBSH
     end
 
     @@methods = {
-      "is_a?"  => IS_A_METHOD,
-      "eq?"    => EQ_METHOD,
-      "str"    => STR_METHOD,
-      "bind"   => BIND_METHOD,
+      "is_a?" => IS_A_METHOD,
+      "eq"    => EQ_METHOD,
+      "neq"   => NEQ_METHOD,
+      "str"   => STR_METHOD,
+      "bind"  => BIND_METHOD,
 
-      "orelse" => ORELSE_METHOD,
+      "orelse"  => ORELSE_METHOD,
       "truthy?" => TRUTHY_METHOD,
-      "dup"   => DUP_METHOD,
-      "clone" => CLONE_METHOD,
+      "dup"     => DUP_METHOD,
+      "clone"   => CLONE_METHOD,
     } of ::String => Function
 
     @@type_aliases = ::Set{"func", "function"}
@@ -2658,7 +2665,7 @@ module TMBSH
 
     def call(args : ::Array(Variant)) : Variant
       begin
-      @proc.try &.call(@binded_args.empty? ? args : @binded_args + args) || TMBSH::NULL
+        @proc.try &.call(@binded_args.empty? ? args : @binded_args + args) || TMBSH::NULL
       rescue e : Exception
         raise e.class.new(e.message.to_s + " (When calling #{to_s})")
       end
@@ -2756,23 +2763,24 @@ module TMBSH
     @@methods = {
 
       # "write"  => WRITE_METHOD,
-      "print" => PRINT_METHOD,
-      "puts"  => PUTS_METHOD,
-      "read"   => READ_METHOD,
-      "readline" => GETS_METHOD,
-      "gets"   => GETS_METHOD,
+      "print"       => PRINT_METHOD,
+      "puts"        => PUTS_METHOD,
+      "read"        => READ_METHOD,
+      "readline"    => GETS_METHOD,
+      "gets"        => GETS_METHOD,
       "gets_to_end" => GETS_TO_END_METHOD,
-      "read_fully" => GETS_TO_END_METHOD,
-      "close"   => CLOSE_METHOD,
+      "read_fully"  => GETS_TO_END_METHOD,
+      "close"       => CLOSE_METHOD,
 
-      "str"    => STR_METHOD,
+      "str" => STR_METHOD,
 
-      "is_a?"  => IS_A_METHOD,
-      "eq?"    => EQ_METHOD,
-      "orelse" => ORELSE_METHOD,
+      "is_a?"   => IS_A_METHOD,
+      "eq"      => EQ_METHOD,
+      "neq"     => NEQ_METHOD,
+      "orelse"  => ORELSE_METHOD,
       "truthy?" => TRUTHY_METHOD,
-      "dup"   => DUP_METHOD,
-      "clone" => CLONE_METHOD,
+      "dup"     => DUP_METHOD,
+      "clone"   => CLONE_METHOD,
     } of ::String => Function
 
     @@type_aliases = ::Set{"file", "descriptor"}
@@ -2805,6 +2813,7 @@ module TMBSH
     def to_f64 : Float64
       raise "Cannot convert File to Float"
     end
+
     def to_i64 : Int64
       raise "Cannot convert File to Int"
     end
@@ -2871,18 +2880,19 @@ module TMBSH
     end
 
     @@methods = {
-      "float"    => FLOAT_METHOD,
-      "int"    => INT_METHOD,
-      "str"    => STR_METHOD,
+      "float" => FLOAT_METHOD,
+      "int"   => INT_METHOD,
+      "str"   => STR_METHOD,
 
       "description" => DESCRIPTION_METHOD,
 
-      "is_a?"  => IS_A_METHOD,
-      "eq?"    => EQ_METHOD,
-      "orelse" => ORELSE_METHOD,
+      "is_a?"   => IS_A_METHOD,
+      "eq"      => EQ_METHOD,
+      "neq"     => NEQ_METHOD,
+      "orelse"  => ORELSE_METHOD,
       "truthy?" => TRUTHY_METHOD,
-      "dup"   => DUP_METHOD,
-      "clone" => CLONE_METHOD,
+      "dup"     => DUP_METHOD,
+      "clone"   => CLONE_METHOD,
     } of ::String => Function
 
     @@type_aliases = ::Set{"exit_status", "status"}
