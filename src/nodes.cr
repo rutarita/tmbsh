@@ -175,6 +175,7 @@ module TMBSH
         args = @args.map &.evaluate(context).as(Variant)
         channel = Channel(Variant).new
         async_context = context.dup
+        async_context.variable_stack = VariableStack.new
         spawn do
           val = if to.is_a?(UserDefinedFunction)
             to.call(async_context, args)
@@ -824,6 +825,7 @@ module TMBSH
         # end
         capture_context = context.dup
         capture_context.output = mem
+        capture_context.variable_stack = VariableStack.new
         @body.execute(capture_context)
         str = mem.to_s
         str = str.chomp if @chomp
@@ -836,6 +838,7 @@ module TMBSH
         closed_context.error = nil
         closed_context.output = nil
         closed_context.error = nil
+        closed_context.variable_stack = VariableStack.new
         res = @body.execute(closed_context)
         if res.is_a?(CommandFinish)
           status = res.status
@@ -1224,13 +1227,6 @@ module TMBSH
         process
       end
 
-      # private def execute_builtin(
-      # builtin : BuiltinCommand, args : ::Array(::String)
-      # input_io, output_io, error_io
-      # )
-      # builtin.call(args, input_io, output_io, error_io)
-      # end
-
       @status : Process::Status?
 
       def wait : Nil
@@ -1517,72 +1513,6 @@ module TMBSH
             TMBSH::Interpreter::ForStatementNode.execute_block
           end
         end
-        # context.interpreter.enter_scope
-        # if @varnames.size == 1
-        #   iter.each do |val|
-        #     context.interpreter.shadow_variable(@varnames[0], val)
-        #     res = @body.execute(context)
-        #     if res.is_a?(Break)
-        #       context.exit_scope
-        #       break
-        #     end
-        #     if res.is_a?(Return)
-        #       context.exit_scope
-        #       return res
-        #     end
-        #   end
-        # elsif @varnames.empty?
-        #   iter.each do |val|
-        #     res = @body.execute(context)
-        #     if res.is_a?(Break)
-        #       context.exit_scope
-        #       break
-        #     end
-        #     if res.is_a?(Return)
-        #       context.exit_scope
-        #       return res
-        #     end
-        #   end
-        # else
-        #   iter.each do |val|
-        #     raise "Splatting is only allowed only on Array" unless val.is_a?(Array)
-        #     arr = val.@value
-        #     @varnames.each_with_index do |name, i|
-        #       context.interpreter.shadow_variable(name, arr[i]? || NULL)
-        #     end
-        #     res = @body.execute(context)
-        #     if res.is_a?(Break)
-        #       context.exit_scope
-        #       break
-        #     end
-        #     if res.is_a?(Return)
-        #       context.exit_scope
-        #       return res
-        #     end
-        #   end
-        # end
-        # context.exit_scope
-        # context.interpreter.enter_scope
-        # iter.each do |val|
-        #   if @varnames.size == 1
-        #     context.interpreter.shadow_variable(@varnames[0], val)
-        #   elsif @varnames.empty?
-        #   else
-        #     raise "Splatting is only allowed only on Array" unless val.is_a?(Array)
-        #     arr = val.@value
-        #     @varnames.each_with_index do |name, i|
-        #       context.interpreter.shadow_variable(name, arr[i]? || NULL)
-        #     end
-        #   end
-        #   res = @body.execute(interpreter, output, false)
-        #   if res.is_a?(Break)
-        #     break
-        #   end
-        #   if res.is_a?(Return)
-        #     return res
-        #   end
-        # end
-        # context.exit_scope
         NOTHING_RESULT
       end
 
