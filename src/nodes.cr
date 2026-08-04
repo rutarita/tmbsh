@@ -1098,7 +1098,7 @@ module TMBSH
           else
             append_variant(parts_str, first)
           end
-          folded[1..].each do |item|
+          folded.each(within: 1..) do |item|
             append_variant(parts_str, item.is_a?(Variant) ? item : item.evaluate(context))
           end
         else
@@ -1110,7 +1110,7 @@ module TMBSH
           else
             append_variant(parts_str, first)
           end
-          @parts[1..].each do |item|
+          @parts.each(within: 1..) do |item|
             append_variant(parts_str, item.evaluate(context))
           end
         end
