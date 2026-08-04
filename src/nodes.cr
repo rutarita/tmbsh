@@ -1184,12 +1184,12 @@ module TMBSH
           if @fork_command
             spawn do
               @shell_command_result = shell_command.call(
-              context, shell_command_input_io, shell_command_output_io, shell_command_error_io args
+              context, shell_command_input_io, shell_command_output_io, shell_command_error_io, args
               )
             end
           else
             @shell_command_result = shell_command.call(
-            context, args
+            context,  shell_command_input_io, shell_command_output_io, shell_command_error_io, args
             )
           end
           return
@@ -1245,7 +1245,14 @@ module TMBSH
       end
 
       def execute(context : Context) : Result
-        process = create_process(context, output_io: context.output || Process::Redirect::Close, error_io: context.error || Process::Redirect::Close)
+        process_context = context
+        if @fork_command
+          process_context = context.dup
+          process_context.variable_stack = VariableStack.new
+        end
+        process = create_process(process_context,
+        input_io: context.input || Process::Redirect::Close,
+        output_io: context.output || Process::Redirect::Close, error_io: context.error || Process::Redirect::Close)
         wait unless @fork_command
         # if status = @status
         #   exit_code = status.exit_code?
