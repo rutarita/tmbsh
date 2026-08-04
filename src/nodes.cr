@@ -1593,7 +1593,7 @@ module TMBSH
       def execute(context : Context) : Result
         function = UserDefinedFunction.new(create_proc)
         function.name = @funcname
-        context.interpreter.shadow_variable(@funcname, function)
+        context.shadow_variable(@funcname, function)
         NOTHING_RESULT
       end
 
