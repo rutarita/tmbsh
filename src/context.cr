@@ -53,7 +53,11 @@ module TMBSH
       end
 
       def get_variable(name : ::String)
-        current_variable_stack[name]
+        if varstack = @variable_stack
+          val = varstack.get_variable(name)
+          return val unless val.is_a?(Null)
+        end
+        interpreter.get_variable(name)
       end
     end
   end
