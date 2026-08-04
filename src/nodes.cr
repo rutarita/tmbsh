@@ -1131,7 +1131,7 @@ module TMBSH
         return if args.empty?
         resolve_alias(context, args)
         command = args.shift
-        if builtin = context.interpreter.get_builtin(command)
+        if builtin = context.interpreter.get_shell_command(command)
           # execute_builtin(builtin, args, input_io, output_io, error_io)
           builtin_input_io = if input_io.is_a?(Process::Redirect)
             case input_io

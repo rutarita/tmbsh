@@ -124,9 +124,9 @@ module TMBSH
     end
 
     alias ShellCommand = Context, ::Deque(::String) -> Result
-    @builtins : Hash(::String, ShellCommand)  = SHELL_COMMANDS
-    def get_builtin(name : ::String) : ShellCommand?
-      @builtins[name]?
+    @shell_commands : Hash(::String, ShellCommand)  = SHELL_COMMANDS
+    def get_shell_command(name : ::String) : ShellCommand?
+      @shell_commands[name]?
     end
     @variable_stack : VariableStack
     getter variable_stack
