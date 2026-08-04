@@ -1140,7 +1140,7 @@ module TMBSH
         end
       end
 
-      @builtin_result : Result?
+      @shell_command_result : Result?
       def create_process(
         context : Context,
         input_io : IO | Process::Redirect = :Inherit,
@@ -1152,9 +1152,9 @@ module TMBSH
         return if args.empty?
         resolve_alias(context, args)
         command = args.shift
-        if builtin = context.interpreter.get_shell_command(command)
-          # execute_builtin(builtin, args, input_io, output_io, error_io)
-          builtin_input_io = if input_io.is_a?(Process::Redirect)
+        if shell_command = context.interpreter.get_shell_command(command)
+          # execute_shell_command(shell_command, args, input_io, output_io, error_io)
+          shell_command_input_io = if input_io.is_a?(Process::Redirect)
             case input_io
               when .inherit?
                 STDIN
@@ -1163,7 +1163,7 @@ module TMBSH
           else
             input_io
           end
-          builtin_output_io = if output_io.is_a?(Process::Redirect)
+          shell_command_output_io = if output_io.is_a?(Process::Redirect)
             case output_io
               when .inherit?
                 STDIN
@@ -1172,7 +1172,7 @@ module TMBSH
           else
             output_io
           end
-          builtin_error_io = if error_io.is_a?(Process::Redirect)
+          shell_command_error_io = if error_io.is_a?(Process::Redirect)
             case error_io
               when .inherit?
                 STDIN
@@ -1183,12 +1183,12 @@ module TMBSH
           end
           if @fork_command
             spawn do
-              @builtin_result = builtin.call(
-              context, args
+              @shell_command_result = shell_command.call(
+              context, shell_command_input_io, shell_command_output_io, shell_command_error_io args
               )
             end
           else
-            @builtin_result = builtin.call(
+            @shell_command_result = shell_command.call(
             context, args
             )
           end
@@ -1250,9 +1250,9 @@ module TMBSH
         # if status = @status
         #   exit_code = status.exit_code?
         # end
-        if builtin_result = @builtin_result
-          @builtin_result = nil
-          return builtin_result
+        if shell_command_result = @shell_command_result
+          @shell_command_result = nil
+          return shell_command_result
         end
         if status = @status
           # exit_code = status.exit_code?

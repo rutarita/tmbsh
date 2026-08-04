@@ -123,7 +123,7 @@ module TMBSH
       end
     end
 
-    alias ShellCommand = Context, ::Deque(::String) -> Result
+    alias ShellCommand = Context, IO?, IO?, IO?, ::Deque(::String) -> Result
     @shell_commands : Hash(::String, ShellCommand)  = SHELL_COMMANDS
     def get_shell_command(name : ::String) : ShellCommand?
       @shell_commands[name]?

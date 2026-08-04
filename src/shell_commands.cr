@@ -14,14 +14,14 @@ class Interpreter
   } of ::String => ShellCommand
 
   private macro builtin(&body)
-    ->(context : Context, args : ::Deque(::String)) : Result {
+    ->(context : Context, input : IO?, output : IO?, error : IO?, args : ::Deque(::String)) : Result {
       {{body.body}}
     }
   end
 
   private macro cd(target)
     unless ::Dir.exists?({{target}})
-      context.error.try &.puts "tmbsh: cd: #{{{target}}}: no such directory"
+      error.try &.puts "tmbsh: cd: #{{{target}}}: no such directory"
       return CommandFinish.new(1)
     end
     if context.original
@@ -38,7 +38,7 @@ class Interpreter
 
   CD_COMMAND = builtin do
     if args.size != 1
-      context.error.try &.puts "tmbsh: cd: requires one argument"
+      error.try &.puts "tmbsh: cd: requires one argument"
       return CommandFinish.new(1)
     end
     target = args[0]
@@ -47,7 +47,7 @@ class Interpreter
         cd(old)
         return CommandFinish.new(0)
       else
-        context.error.try &.puts "tmbsh: cd: OLDPWD not set"
+        error.try &.puts "tmbsh: cd: OLDPWD not set"
         return CommandFinish.new(1)
       end
     else
@@ -56,7 +56,7 @@ class Interpreter
     end
   end
   PWD_COMMAND = builtin do
-    context.output.try &.puts context.cwd
+    output.try &.puts context.cwd
     CommandFinish.new(0)
   end
 
@@ -71,10 +71,10 @@ HELP
     when 1
       command = context.interpreter.resolve_alias(args[0])
       if command
-      context.output.try &.puts command.join(" ")
+      output.try &.puts command.join(" ")
       CommandFinish.new(0)
       else
-        context.output.try &.puts "tmbsh: alias: #{args[0]}: not found"
+        output.try &.puts "tmbsh: alias: #{args[0]}: not found"
         CommandFinish.new(1)
       end
     when 3..
@@ -83,7 +83,7 @@ HELP
       context.interpreter.add_alias(name, command)
       CommandFinish.new(0)
     else
-      context.output.try &.puts ALIAS_HELP
+      output.try &.puts ALIAS_HELP
       CommandFinish.new(0)
     end
   end
