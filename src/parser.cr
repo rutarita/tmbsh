@@ -301,6 +301,9 @@ module TMBSH
         when .exclamation?
           node.dont_chomp
           next_token
+        when .ampersand?
+          node.async
+          next_token
         else
           break
         end

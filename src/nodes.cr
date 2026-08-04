@@ -805,6 +805,7 @@ module TMBSH
       # @statements : ::Array(StatementNode)
       @body : StatementBlockNode
       @chomp : ::Bool = true
+      @async : ::Bool = false
       @return_status : ::Bool = false
       @collect_array : ::Bool = false
 
@@ -844,16 +845,33 @@ module TMBSH
         end
       end
 
-      def evaluate(context : Context) : Variant
+      private def capture_depending(context : Context)
         unless @return_status
-          capture(context)
+            capture(context)
+          else
+            capture_status(context)
+          end
+      end
+
+      def evaluate(context : Context) : Variant
+        unless @async
+          capture_depending(context)
         else
-          capture_status(context)
+        channel = Channel(Variant).new
+        spawn do
+          val = capture_depending(context)
+          channel.send(val)
+        end
+        Promise.new(channel)
         end
       end
 
       def dont_chomp
         @chomp = false
+      end
+
+      def async
+        @async = true
       end
 
       def return_status
