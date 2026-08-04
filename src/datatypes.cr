@@ -2628,7 +2628,7 @@ module TMBSH
     end
 
     def []=(key : Variant, value : Variant)
-      raise "Cannot ::Set on Function"
+      raise "Cannot set on Function"
     end
 
     def to_s : ::String
@@ -2807,7 +2807,7 @@ module TMBSH
     end
 
     def to_s : ::String
-      @path
+      @file.fd.to_s
     end
 
     def to_f64 : Float64
@@ -2970,6 +2970,125 @@ module TMBSH
 
     def truthy? : ::Bool
       @exit_code == 0
+    end
+  end
+
+  class Promise < Variant
+    # @fiber : Fiber
+    @channel : Channel(Variant)
+
+
+    AWAIT_METHOD = TMBSH.method("await") do
+      raise ArgumentError.new("Expected 0..1 arguments for await") unless args.size < 2
+      if time = args[1]?
+        time = if time.is_a?(Int)
+          time.@value.seconds
+        elsif time.is_a?(Float)
+          time.@value.seconds
+        else
+          raise TypeError.new("Expected Int or Float as first argument to await")
+        end
+        this.await(time)
+      else
+        this.await
+      end
+    end
+
+    @@methods = {
+      "await"   => AWAIT_METHOD,
+
+      "is_a?"   => IS_A_METHOD,
+      "eq"      => EQ_METHOD,
+      "neq"     => NEQ_METHOD,
+      "orelse"  => ORELSE_METHOD,
+      "truthy?" => TRUTHY_METHOD,
+      "dup"     => DUP_METHOD,
+      "clone"   => CLONE_METHOD,
+    } of ::String => Function
+
+    @@type_aliases = ::Set{"promise"}
+
+    def initialize(channel : Channel(Variant))
+      @channel = channel
+    end
+
+    def to_s : ::String
+      @channel.to_s
+    end
+
+    def to_f64 : Float64
+      raise TypeError.new("Cannot convert Promise to Float")
+    end
+
+    def to_i64 : Int64
+      raise TypeError.new("Cannot convert Promise to Int")
+    end
+
+    def to_a : ::Array(Variant)
+      raise TypeError.new("Cannot convert Promise to Array")
+    end
+
+    def dup : Promise
+      self
+    end
+
+    def clone : Promise
+      self
+    end
+
+    def hash : UInt64
+      @channel.hash
+    end
+
+    def [](key : Variant) : Variant
+      raise TypeError.new("Cannot access key on Promise")
+    end
+
+    def []?(key : Variant) : Variant
+      raise TypeError.new("Cannot access key on Promise")
+    end
+
+    def []=(key : Variant, value : Variant)
+      raise TypeError.new("Cannot set key on Promise")
+    end
+
+    def call(args : ::Array(Variant)) : Variant
+      raise TypeError.new("Cannot call Status")
+    end
+
+    def ==(other : Variant)
+      return @channel == other.@channel if other.is_a?(Promise)
+    end
+
+    def to_json : ::String
+      raise TypeError.new("Cannot convert Promise to JSON")
+    end
+
+    def to_json(builder : JSON::Builder)
+      raise TypeError.new("Cannot convert Promise to JSON")
+    end
+
+    def iter_init : Iterator
+      raise TypeError.new("Cannot iterate over Promise")
+    end
+
+    def truthy? : ::Bool
+      true
+    end
+
+    def await : Variant
+      Fiber.yield
+      @channel.receive
+    end
+
+    def await(time : Time::Span) : Variant
+      Fiber.yield
+      select
+        when val = @channel.receive
+          val
+        when timeout(time)
+          NULL
+      end
     end
   end
 end

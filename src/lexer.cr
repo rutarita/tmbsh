@@ -1,5 +1,5 @@
 require "./token"
-
+require "./math_token"
 module TMBSH
   abstract class Lexer
     @row : Int32 = 1
@@ -560,6 +560,69 @@ module TMBSH
         end
       end
       mem.to_s
+    end
+
+    @math_token = MathToken.new
+    getter math_token
+    def next_math_token
+      skip_whitespace
+      case current_char
+        when '0'..'9'
+        str = consume_math_string
+        if num = parse_number(str)
+          @math_token.kind = :Number
+          @math_token.raw_value = num
+        else
+          @math_token.kind = :Variable
+          @math_token.raw_value = str
+        end
+        when '('
+          @math_token.kind = :ParenthesisOpen
+          next_char
+        when ')'
+          @math_token.kind = :ParenthesisClose
+          next_char
+        when '+'
+          @math_token.kind = :Plus
+          next_char
+        when '-'
+          @math_token.kind = :Minus
+          next_char
+        when '/'
+          if peek_char == '/'
+          next_char
+          next_char
+          @math_token.kind = :DoubleSlash
+          else
+          next_char
+          @math_token.kind = :Slash
+          end
+        when '*'
+          if peek_char == '*'
+          next_char
+          next_char
+          @math_token.kind = :DoubleStar
+          else
+          next_char
+          @math_token.kind = :Star
+          end
+      end
+      @math_token
+    end
+
+    private def parse_number(str : ::String) : Int64 | Float64 | Nil
+      str.to_i64?(whitespace: true, underscore: true, prefix: true, leading_zero_is_octal: true) ||
+      str.to_f64?
+    end
+
+    private def consume_math_string : ::String
+      buf = IO::Memory.new
+      loop do
+        buf << current_char
+        next_char
+        break if current_char.in?(' ', ')', '+', '-', '*', '/', '|', '&', '^', '\\')
+      end
+      buf.to_s
     end
 
     class UnexpectedCharacterException < ::Exception

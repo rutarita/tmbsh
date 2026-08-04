@@ -7,7 +7,7 @@ require "./top_level_values"
 {% else %}
   require "./regex_based_lexer_parser"
 {% end %}
-require "./builtin_commands"
+require "./shell_commands"
 module TMBSH
   class Interpreter
     class VariableStack
@@ -51,8 +51,7 @@ module TMBSH
         # if scope = @scope_cache[of_var]?
         #   return scope
         # end
-        current_scope.downto(0) do |i|
-          scope = @vars[i]
+        @vars.reverse_each do |scope|
           if scope[of_var]?
             # @scope_cache[of_var] = i
             return scope
@@ -114,14 +113,23 @@ module TMBSH
         val = self[name]
         set_env(name, val)
       end
+
+      def make_variable_global(name : ::String)
+        if scope = find_scope
+          if val = scope.delete(name)
+            @global[name] = val
+          end
+        end
+      end
     end
 
-    alias BuiltinCommand = Interpreter, IO?, IO?, IO?, ::Deque(::String) -> Result
-    @builtins : Hash(::String, BuiltinCommand)  = BUILTIN_COMMANDS
-    def get_builtin(name : ::String) : BuiltinCommand?
+    alias ShellCommand = Context, ::Deque(::String) -> Result
+    @builtins : Hash(::String, ShellCommand)  = SHELL_COMMANDS
+    def get_builtin(name : ::String) : ShellCommand?
       @builtins[name]?
     end
     @variable_stack : VariableStack
+    getter variable_stack
     @strict : ::Bool = false
 
     @cwd : ::String
@@ -151,6 +159,10 @@ module TMBSH
 
       def export_variable(name : ::String) : Nil
         @variable_stack.export(name)
+      end
+
+      def make_variable_global(name : ::String)
+        @variable_stack.make_variable_global(name : ::String)
       end
       #
       # def set_pseudoconstants_from_env

@@ -1,5 +1,6 @@
 require "./lexer/*"
 require "./nodes"
+require "./math_parser"
 module TMBSH
   class Parser
     @lexer : Lexer
@@ -190,22 +191,31 @@ module TMBSH
       end
     end
 
-    def parse_numerical : Interpreter::SingleValueNode
+    def parse_numerical : Interpreter::SingleValueNode | Interpreter::MathExpressionNode
       next_token
       # p! token
       case token.kind
         when .string?
           str = token.raw_value
           next_token
-          if str.index('.')
+          val = str.to_i64?(whitespace: true, underscore: true, prefix: true, leading_zero_is_octal: true) ||
+          str.to_f64?
+          case val
+          when Int64
             Interpreter::SingleValueNode.new(
-              Float.new(str.to_f64)
+              Int.new(val)
+            )
+          when Float64
+            Interpreter::SingleValueNode.new(
+              Float.new(val)
             )
           else
-            Interpreter::SingleValueNode.new(
-              Int.new(str.to_i64)
-            )
+            raise UnexpectedToken.new("Invalid number at #{row}:#{column}")
           end
+        when .parenthesis_open?
+          e = parse_math_expression
+          next_token
+          e
         else
           unexpected_token
       end
@@ -337,7 +347,13 @@ module TMBSH
             deq << Interpreter::MethodCall.new(method_name, args)
           when .parenthesis_open?
             args = parse_func_args
-            deq << Interpreter::Call.new(args)
+            # p! @lexer.token
+            if token.kind.ampersand?
+              next_token
+              deq << Interpreter::AsyncCall.new(args)
+            else
+              deq << Interpreter::Call.new(args)
+            end
           else
           # when
           # .whitespace?,
@@ -511,6 +527,12 @@ module TMBSH
             skip_whitespaces_and_newlines
             target = parse_value
             command.file_read_target = target
+          when .ampersand?
+            next_token
+            skip_whitespaces
+            command.fork_command = true
+            raise "Expected end of statement after ampersand" unless token.eos? || token.kind.in?(stop_at)
+            break
           else
             break if token.kind.in?(stop_at)
             command << parse_value
@@ -572,15 +594,13 @@ module TMBSH
             skip_whitespaces_and_newlines
             condition.add_or
           when .eos?
+            unexpected_token if enclosed
             next_token
             break
           when .parenthesis_close?
-            if enclosed
-              next_token
-              break
-            else
-              unexpected_token
-            end
+            unexpected_token unless enclosed
+            next_token
+            break
           else
             unexpected_token
         end
