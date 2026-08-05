@@ -2806,7 +2806,7 @@ module TMBSH
     end
 
     def to_i64 : Int64
-      raise "Cannot convert File to Int"
+      @file.fd.to_f64
     end
 
     def to_a : ::Array(Variant)
