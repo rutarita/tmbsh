@@ -224,14 +224,29 @@ module TMBSH
       end
     end
 
-    def execute_string(string : ::String)
-      execute_parsable(string)
+    private def execute_parsable_with_errors(parsable)
+      parser = Parser.new(parsable)
+      until parser.token.kind.eof?
+        statement = parser.parse_statement
+        execute_statement(statement)
+      end
+    end
+    def execute_string(string : ::String, raise_on_error : ::Bool = false)
+      unless raise_on_error
+          execute_parsable(string)
+        else
+          execute_parsable_with_errors(string)
+        end
     end
 
-    def execute_file(path : ::String | Path)
+    def execute_file(path : ::String | Path, raise_on_error : ::Bool = false)
       # string = ::File.read(path)
       ::File.open(path) do |io|
-        execute_parsable(io)
+        unless raise_on_error
+          execute_parsable(io)
+        else
+          execute_parsable_with_errors(io)
+        end
       end
       # execute_string(string)
     end

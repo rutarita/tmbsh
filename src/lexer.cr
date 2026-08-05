@@ -321,7 +321,7 @@ module TMBSH
           next_varname
         else
           str = consume_string
-          if current_char.in?(' ', '\n', ';', '\0', '}')
+          if current_char.in?(' ', '\n', ';', '\0', '}', ')')
             if @start_of_statement && str.size <= LONGEST_KEYWORD_LENGTH
               if kind = KEYWORDS[str]?
                 @token.kind = kind
@@ -496,7 +496,7 @@ module TMBSH
     private def valid_varname_char(char)
       ('0'..'9').includes?(char) ||
         ('a'..'z').includes?(char) ||
-        ('A'..'Z').includes?(char) || char == '_' || char == '!'
+        ('A'..'Z').includes?(char) || char == '_'
     end
 
     def next_varname : Token
@@ -523,6 +523,10 @@ module TMBSH
         if valid_varname_char(current_char)
           buf << current_char
         elsif current_char == '?'
+          buf << current_char
+          next_char
+          break
+        elsif current_char == '!'
           buf << current_char
           next_char
           break

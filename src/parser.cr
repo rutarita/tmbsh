@@ -289,6 +289,7 @@ module TMBSH
     end
 
     def parse_capture_command : Interpreter::CaptureCommandNode
+      @lexer.start_of_statement = true
       next_token
       block = parse_block(:ParenthesisClose)
       next_token
@@ -623,6 +624,7 @@ module TMBSH
         break if statement.is_a?(Interpreter::EmptyStatementNode)
         block << statement
         skip_whitespaces_and_newlines_and_semicolons
+
       end
       block
     end
@@ -719,16 +721,24 @@ module TMBSH
         end
         unexpected_token("Varname") unless token.kind.varname?
         argname = token.raw_value
-        next_token
-        if optional_start_index
-          unexpected_token("Question") unless token.kind.question?
-          next_token
-        else
-          if token.kind.question?
+        if argname[-1] == '?'
+          unless optional_start_index
             optional_start_index = argnames.size
-            next_token
           end
+          argname = argname[0...-1]
+        else
+          raise "Expected variable to be optional" if optional_start_index
         end
+        next_token
+        # if optional_start_index
+        #   unexpected_token("Question") unless token.kind.question?
+        #   next_token
+        # else
+        #   if token.kind.question?
+        #     optional_start_index = argnames.size
+        #     next_token
+        #   end
+        # end
         argnames << argname
         skip_whitespaces_and_newlines
         # @lexer.lex_varname = true

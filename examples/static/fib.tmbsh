@@ -1,8 +1,8 @@
 def fib(n)
     num=$n->float()
-    if $num->eq?(%1.0)
+    if $num == %1.0
         return %1.0
-    elif $num->eq?(%0.0)
+    elif $num == %0.0
         return %0.0
     end
     a=%0.0
