@@ -12,6 +12,7 @@ class Interpreter
     end,
     "yield" => YIELD_COMMAND,
     "sleep" => SLEEP_COMMAND,
+    "tmbshgc" => GC_COMMAND,
   } of ::String => ShellCommand
 
   private macro builtin(&body)
@@ -119,6 +120,31 @@ HELP
       else
         output.try &.puts "Incorrect seconds amount: #{args[0]}"
         CommandFinish.new(1)
+      end
+    end
+  end
+GC_USAGE = <<-HELP
+Usage:
+tmbshgc collect|disable|enable
+HELP
+  GC_COMMAND = builtin do
+    if args.size == 0
+      output.try &.puts GC_USAGE
+      CommandFinish.new(0)
+    else
+      case args[0]
+        when "collect"
+          GC.collect
+          CommandFinish.new(0)
+        when "disable"
+          GC.disable
+          CommandFinish.new(0)
+        when "enable"
+          GC.enable
+          CommandFinish.new(0)
+        else
+          error.try &.puts "Unknown command: #{args[0]}"
+          CommandFinish.new(1)
       end
     end
   end
