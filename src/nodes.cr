@@ -520,12 +520,10 @@ module TMBSH
         @pure_string
       end
 
-      def to_single_value_node : SingleValueNode
-        # to avoid copying strings too much but it didn't seem like it
-        # affects the speed much so this one is gonna be used
-        if @parts.size == 1
+      def make_string : ::String
+      if @parts.size == 1
           part = @parts[0]
-          return SingleValueNode.new(String.new(part.to_s))
+          return part.to_s
         end
         str = ::String.build do |io|
           @parts.each do |part|
@@ -533,7 +531,6 @@ module TMBSH
             io << part.to_s
           end
         end
-        SingleValueNode.new(create_string(str))
       end
 
       def add_path_separator
