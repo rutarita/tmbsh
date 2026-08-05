@@ -435,7 +435,18 @@ module TMBSH
         #   break
         # end
         char = next_char
-        # p! char, @string_mode
+        if escaped
+          unexpected_char if char == '\0'
+          escaped_char = resolve_escaped(char)
+          buffer << escaped_char unless escaped_char == '\0'
+          escaped = false
+          # next_char
+          next
+        elsif char == '\\'
+          break if @string_mode.plain? && peek_char == '\n'
+          escaped = true
+          next
+        end
         case @string_mode
         when .plain?
           break if PLAIN_MODE_STOP_CHARACTERS_SET.includes?(char)
@@ -452,18 +463,6 @@ module TMBSH
         end
         if char == '-' && peek_char == '>'
           break
-        end
-        if escaped
-          unexpected_char if char == '\0'
-          escaped_char = resolve_escaped(char)
-          buffer << escaped_char unless escaped_char == '\0'
-          escaped = false
-          # next_char
-          next
-        elsif char == '\\'
-          break if @string_mode.plain? && peek_char == '\n'
-          escaped = true
-          next
         end
         case @string_mode
         in .plain?
