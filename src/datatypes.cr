@@ -2806,7 +2806,7 @@ module TMBSH
     end
 
     def to_i64 : Int64
-      @file.fd.to_f64
+      @file.fd.to_i64
     end
 
     def to_a : ::Array(Variant)
