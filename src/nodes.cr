@@ -797,6 +797,7 @@ module TMBSH
       @body : StatementBlockNode
       @chomp : ::Bool = true
       @async : ::Bool = false
+      @block_error : ::Bool = false
       @return_status : ::Bool = false
       @collect_array : ::Bool = false
 
@@ -815,6 +816,7 @@ module TMBSH
         # end
         capture_context = context.dup
         capture_context.output = mem
+        capture_context.error = nil if @block_error
         capture_context.add_variable_stack
         @body.execute(capture_context)
         str = mem.to_s
@@ -825,7 +827,7 @@ module TMBSH
 
       private def capture_status(context)
         closed_context = context.dup
-        closed_context.error = nil
+        closed_context.input = nil
         closed_context.output = nil
         closed_context.error = nil
         closed_context.add_variable_stack
@@ -865,6 +867,10 @@ module TMBSH
 
       def async
         @async = true
+      end
+
+      def block_error
+        @block_error = true
       end
 
       def return_status

@@ -315,6 +315,9 @@ module TMBSH
         when .ampersand?
           node.async
           next_token
+        when .at?
+          node.block_error
+          next_token
         else
           break
         end
