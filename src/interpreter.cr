@@ -219,7 +219,7 @@ module TMBSH
           begin
             execute_statement(statement)
           rescue e
-            puts "tmbsh: Exception #{e.to_s}"
+            puts "tmbsh: Exception: #{e.to_s}"
           end
       end
     end
