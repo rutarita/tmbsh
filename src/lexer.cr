@@ -496,7 +496,7 @@ module TMBSH
     private def valid_varname_char(char)
       ('0'..'9').includes?(char) ||
         ('a'..'z').includes?(char) ||
-        ('A'..'Z').includes?(char) || char == '_'
+        ('A'..'Z').includes?(char) || char == '_' || char == '!'
     end
 
     def next_varname : Token
