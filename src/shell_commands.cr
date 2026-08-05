@@ -8,9 +8,10 @@ class Interpreter
     "alias" => ALIAS_COMMAND,
     "export" => EXPORT_COMMAND,
     "exit"  => builtin do
-      exit
+      exit args[0]?.try &.to_i || 0
     end,
-    "yield" => YIELD_COMMAND
+    "yield" => YIELD_COMMAND,
+    "sleep" => SLEEP_COMMAND,
   } of ::String => ShellCommand
 
   private macro builtin(&body)
@@ -99,6 +100,27 @@ HELP
   YIELD_COMMAND = builtin do
     Fiber.yield
     CommandFinish.new(0)
+  end
+
+  SLEEP_USAGE = <<-HELP
+Usage:
+sleep [SECONDS]
+HELP
+
+  SLEEP_COMMAND = builtin do
+    if args.size == 0
+      output.try &.puts SLEEP_USAGE
+      CommandFinish.new(0)
+    else
+      time = args[0].to_f64?
+      if time
+        sleep time.seconds
+        CommandFinish.new(0)
+      else
+        output.try &.puts "Incorrect seconds amount: #{args[0]}"
+        CommandFinish.new(1)
+      end
+    end
   end
 end
 end
