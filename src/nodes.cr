@@ -336,7 +336,7 @@ module TMBSH
         String.new(@@string_pool.get(str))
       end
 
-      private def expand_path(dir_path : Path?, pattern : Regex | ::String, dirs_only : ::Bool) : ::Array(Path)?
+      private def expand_path(cwd : ::String, dir_path : Path?, pattern : Regex | ::String, dirs_only : ::Bool) : ::Array(Path)?
         if dir_path
           if pattern.is_a?(Regex) && Dir.exists?(dir_path)
             arr = Dir.children(dir_path).select do |entry_name|
@@ -350,7 +350,7 @@ module TMBSH
           end
         else
           if pattern.is_a?(Regex)
-            arr = Dir.children(".").select do |entry_name|
+            arr = Dir.children(cwd).select do |entry_name|
               pattern.match(entry_name) unless dirs_only && !Dir.exists?(entry_name)
             end.map do |path|
               Path[path]
@@ -437,11 +437,11 @@ module TMBSH
         separated
       end
 
-      private def expand_paths(paths : ::Array(::Path), pattern : Regex | ::String, dirs_only : ::Bool)
+      private def expand_paths(cwd : ::String, paths : ::Array(::Path), pattern : Regex | ::String, dirs_only : ::Bool)
         result = [] of ::Path
         paths.each do |path|
           begin
-            if expanded_path = expand_path(path, pattern, dirs_only)
+            if expanded_path = expand_path(cwd, path, pattern, dirs_only)
               # p! expanded_path
               result.concat(expanded_path)
             end
@@ -483,14 +483,14 @@ module TMBSH
         end
         initial_path = @absolute ? Path["/"] : nil
         # p! separated
-        expanded = expand_path(initial_path, separated[0], separated.size > 1 || @path_dir_end)
+        expanded = expand_path(context.cwd, initial_path, separated[0], separated.size > 1 || @path_dir_end)
         return to_literal(context) unless expanded
         separated.each(within: 1...-1) do |pattern|
-          expanded = expand_paths(expanded, pattern, true)
+          expanded = expand_paths(context.cwd, expanded, pattern, true)
           return to_literal(context) if expanded.empty?
         end
         unless separated.size == 1
-          expanded = expand_paths(expanded, separated.last, @path_dir_end)
+          expanded = expand_paths(context.cwd, expanded, separated.last, @path_dir_end)
         end
         # p! expanded
         return to_literal(context) if expanded.empty?
