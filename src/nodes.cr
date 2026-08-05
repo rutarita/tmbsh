@@ -1,7 +1,7 @@
 require "./interpreter"
 require "./exceptions"
 require "./context"
-require "./user_defined_function"
+# require "./user_defined_function"
 module TMBSH
   class Interpreter
     class VariableRef
@@ -130,12 +130,12 @@ module TMBSH
         end
         {%if flag?(:method_hash_caching)%}
         if method = to.get_method(@method_hash)
-          method.call(args)
+          method.call(context, args)
         else
-        to.get_method(@method_name).call(args)
+        to.get_method(@method_name).call(context, args)
         end
         {% else %}
-        to.get_method(@method_name).call(args)
+        to.get_method(@method_name).call(context, args)
         {% end %}
       end
     end
@@ -149,11 +149,7 @@ module TMBSH
 
       def apply(to : Variant, context : Context) : Variant
         args = @args.map &.evaluate(context).as(Variant)
-        if to.is_a?(UserDefinedFunction)
-            to.call(context, args)
-        else
-            to.call(args)
-        end
+        to.call(context, args)
       end
 
       def constant? : ::Bool
@@ -177,11 +173,7 @@ module TMBSH
         async_context = context.dup
         async_context.variable_stack = VariableStack.new
         spawn do
-          val = if to.is_a?(UserDefinedFunction)
-            to.call(async_context, args)
-          else
-            to.call(args)
-          end
+          val = to.call(async_context, args)
           channel.send(val)
         end
         Promise.new(channel)
@@ -979,7 +971,7 @@ module TMBSH
       end
 
       def evaluate(context : Context) : Variant
-        UserDefinedFunction.new(create_proc)
+        Function.new(create_proc)
       end
 
       def constant? : ::Bool
@@ -1500,18 +1492,18 @@ module TMBSH
 
       def execute(context : Context) : Result
         variant = @iterable.evaluate(context)
-        iter = variant.is_a?(Iterator) ? variant : variant.iter_init
+        iter = variant.is_a?(Iterator) ? variant : variant.iter_init(context)
         if @varnames.size == 1
-          iter.each do |val|
+          iter.each(context) do |val|
             @body.set_variable(@varnames[0], val)
             TMBSH::Interpreter::ForStatementNode.execute_block
           end
         elsif @varnames.empty?
-          iter.each do |val|
+          iter.each(context) do |val|
             TMBSH::Interpreter::ForStatementNode.execute_block
           end
         else
-          iter.each do |val|
+          iter.each(context) do |val|
             raise "Splatting is only allowed on Array" unless val.is_a?(Array)
             arr = val.@value
             @varnames.each_with_index do |name, i|
@@ -1546,7 +1538,7 @@ module TMBSH
       TMBSH::Interpreter.create_proc_func
 
       def execute(context : Context) : Result
-        function = UserDefinedFunction.new(create_proc)
+        function = Function.new(create_proc)
         function.name = @funcname
         context.shadow_variable(@funcname, function)
         NOTHING_RESULT

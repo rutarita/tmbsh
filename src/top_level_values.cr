@@ -4,7 +4,7 @@ require "./readline"
 module TMBSH
   macro tl_function(&block)
 # top level function duhh
-    Function.new(->(args : ::Array(Variant)) : Variant? {
+    Function.new(->(context : Interpreter::Context, args : ::Array(Variant)) : Variant? {
       {{ block.body }}
     })
   end
@@ -22,13 +22,18 @@ module TMBSH
     property idx
     property iter
 
-    def initialize(iterable : Variant, offset : Int64 = 0)
+    def initialize(context : Interpreter::Context, iterable : Variant, offset : Int64 = 0)
       @idx = offset
-      @iter = iterable.iter_init
+      @iter = iterable.iter_init(context)
     end
 
-    def iter_next : Variant?
-      if val = @iter.iter_next
+    def initialize(iterator : Iterator, offset : Int64 = 0)
+      @idx = offset
+      @iter = iterator
+    end
+
+    def iter_next(context : Interpreter::Context) : Variant?
+      if val = @iter.iter_next(context)
         arr = Array.new([Int.new(@idx), val] of Variant)
         @idx += 1
         arr
@@ -36,15 +41,11 @@ module TMBSH
     end
 
     def clone : self
-      v = self.class.new(@iter.dup)
-      v.idx = @idx
-      v
+      self.class.new(@iter.dup, @idx)
     end
 
     def dup : self
-      v = self.class.new(@iter.dup)
-      v.idx = @idx
-      v
+      self.class.new(@iter.dup, @idx)
     end
   end
 
@@ -52,19 +53,23 @@ module TMBSH
     @iterators : ::Array(TMBSH::Iterator) = [] of TMBSH::Iterator
     property iterators
 
-    def initialize(iterables : ::Array(Variant))
+    def initialize(context : Interpreter::Context, iterables : ::Array(Variant))
       iterables.each do |var|
-        @iterators << var.iter_init
+        @iterators << var.iter_init(context)
       end
+    end
+
+    def initialize(iterators : ::Array(Iterator))
+      @iterators = iterators
     end
 
     @depleted : ::Bool = false
 
-    def iter_next : Variant?
+    def iter_next(context : Interpreter::Context) : Variant?
       unless @depleted
         res = [] of Variant
         @iterators.each do |iterator|
-          if var = iterator.iter_next
+          if var = iterator.iter_next(context)
             res << var
           else
             @depleted = true
@@ -76,11 +81,11 @@ module TMBSH
     end
 
     def clone : self
-      self.class.new(@iterators.clone)
+      self.class.new(@iterators)
     end
 
     def dup : self
-      self.class.new(@iterators.dup)
+      self.class.new(@iterators)
     end
   end
 
@@ -92,11 +97,11 @@ module TMBSH
     else
       offset = 0_i64
     end
-    EnumerateIterator.new(args[0], offset)
+    EnumerateIterator.new(context, args[0], offset)
   end
 
   ZIP_FUNCTION = TMBSH.tl_function do
-    ZipIterator.new(args.to_a)
+    ZipIterator.new(context, args.to_a)
   end
 
   DIR_FUNCTION = TMBSH.tl_function do

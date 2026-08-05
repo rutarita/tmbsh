@@ -1,16 +1,17 @@
 require "json"
 require "./exceptions"
+require "./context"
 
 module TMBSH
   macro abstract_method(name, &body)
-    Function.new(self.to_s.lchop("TMBSH::"), {{name}}, ->(args : ::Array(Variant)) : Variant? {
+    Function.new(self.to_s.lchop("TMBSH::"), {{name}}, ->(context : Interpreter::Context, args : ::Array(Variant)) : Variant? {
     this = args[0]
     {{body.body}}
     })
   end
 
   macro method(name, &body)
-    Function.new(self.to_s.lchop("TMBSH::"), {{name}}, ->(args : ::Array(Variant)) : Variant? {
+    Function.new(self.to_s.lchop("TMBSH::"), {{name}}, ->(context : Interpreter::Context, args : ::Array(Variant)) : Variant? {
     this = args[0] # .as(self)
     raise "Wrong self" unless this.is_a?(self)
     {{body.body}}
@@ -56,7 +57,7 @@ module TMBSH
     @@unstable_methods : ::Set(::String) = ::Set(::String).new # means methods that can vary in result even if the value is consistent
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     ITER_METHOD = TMBSH.abstract_method("iter") do
-      this.iter_init
+      this.iter_init(context)
     end
 
     CLONE_METHOD = TMBSH.abstract_method("clone") do
@@ -97,7 +98,7 @@ module TMBSH
       this.truthy? ? TRUE : FALSE
     end
 
-    abstract def call(args : ::Array(Variant)) : Variant
+    abstract def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
     abstract def to_f64 : Float64
 
     abstract def to_i64 : Int64
@@ -140,7 +141,7 @@ module TMBSH
 
     abstract def ==(other : Variant)
 
-    abstract def iter_init : Iterator
+    abstract def iter_init(context : Interpreter::Context) : Iterator
 
     abstract def truthy? : ::Bool
 
@@ -194,21 +195,21 @@ module TMBSH
     class MapIterator < Iterator
       include IteratorBoilerplate
 
-      def iter_next : Variant?
-        val = @iterator.iter_next
+      def iter_next(context : Interpreter::Context) : Variant?
+        val = @iterator.iter_next(context)
         return unless val
-        @func.call([val] of Variant)
+        @func.call(context, [val] of Variant)
       end
     end
 
     class SelectIterator < Iterator
       include IteratorBoilerplate
 
-      def iter_next : Variant?
+      def iter_next(context : Interpreter::Context) : Variant?
         while true
-          val = @iterator.iter_next
+          val = @iterator.iter_next(context)
           return unless val
-          if @func.call([val] of Variant).truthy?
+          if @func.call(context, [val] of Variant).truthy?
             return val
           end
         end
@@ -218,11 +219,11 @@ module TMBSH
     class RejectIterator < Iterator
       include IteratorBoilerplate
 
-      def iter_next : Variant?
+      def iter_next(context : Interpreter::Context) : Variant?
         while true
-          val = @iterator.iter_next
+          val = @iterator.iter_next(context)
           return unless val
-          unless @func.call([val] of Variant).truthy?
+          unless @func.call(context, [val] of Variant).truthy?
             return val
           end
         end
@@ -230,16 +231,16 @@ module TMBSH
     end
 
     NEXT_METHOD = TMBSH.method("next") do
-      this.iter_next || NULL
+      this.iter_next(context) || NULL
     end
     TO_A_METHOD = TMBSH.method("to_a") do
-      this.to_sharr
+      this.to_sharr(context)
     end
     {% for itertype in ["map", "select", "reject"] %}
       {{itertype.id.upcase}}_METHOD = TMBSH.method({{itertype}}) do
         func = args[1]?
         raise "Expected 1 argument that is a function" unless args.size == 2 && func.is_a?(Function)
-        this.{{itertype.id}}(func)
+        this.{{itertype.id}}(context, func)
       end
     {% end %}
 
@@ -247,7 +248,7 @@ module TMBSH
       into = args[1]?
       func = args[2]?
       raise "Expected 1 collector argument and second Function argument" unless into && func.is_a?(Function)
-      this.fold(into, func)
+      this.fold(context, into, func)
     end
 
     @@methods = {
@@ -269,10 +270,10 @@ module TMBSH
 
     @@type_aliases = ::Set{"iter", "iterator"}
 
-    abstract def iter_next : Variant?
+    abstract def iter_next(context : Interpreter::Context) : Variant?
 
-    def call(args : ::Array(Variant)) : Variant
-      iter_next || NULL
+    def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
+      iter_next(context) || NULL
     end
 
     def to_f64 : Float64
@@ -288,11 +289,19 @@ module TMBSH
     end
 
     def to_a : ::Array(Variant)
+      raise "Internal error, iterator collecting functions must have context passed to them"
+    end
+
+    def to_a(context : Interpreter::Context) : ::Array(Variant)
       arr = [] of Variant
-      while val = iter_next
+      while val = iter_next(context)
         arr << val
       end
       arr
+    end
+
+    def to_sharr(context : Interpreter::Context) : Array
+      Array.new(to_a(context))
     end
 
     def to_json : ::String
@@ -319,12 +328,12 @@ module TMBSH
       raise "Cannot do key assignment on Iterator"
     end
 
-    def iter_init : Iterator
+    def iter_init(context : Interpreter::Context) : Iterator
       self
     end
 
-    def each(& : Variant ->)
-      while val = iter_next
+    def each(context : Interpreter::Context, & : Variant ->)
+      while val = iter_next(context)
         yield val
       end
     end
@@ -338,14 +347,14 @@ module TMBSH
     end
 
     {% for itertype in ["map", "select", "reject"] %}
-      def {{itertype.id}}(func : Function)
+      def {{itertype.id}}(context : Interpreter::Context, func : Function)
         {{itertype.id.titleize}}Iterator.new(self, func)
       end
     {% end %}
 
-    def fold(into : Variant, func : Function)
-      each do |i|
-        func.call([into, i] of Variant)
+    def fold(context : Interpreter::Context, into : Variant, func : Function)
+      each(context) do |i|
+        func.call(context, [into, i] of Variant)
       end
       into
     end
@@ -363,7 +372,7 @@ module TMBSH
         @target = val
       end
 
-      def iter_next : Variant?
+      def iter_next(context : Interpreter::Context) : Variant?
         if @current < @target
           cur = @current
           @current += 1
@@ -628,7 +637,7 @@ module TMBSH
       raise "Cannot ::Set on {{name}}"
     end
 
-    def call(args : ::Array(Variant)) : Variant
+    def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
       raise "Cannot call {{name}}"
     end
 
@@ -688,7 +697,7 @@ module TMBSH
       Array.new(arr)
     end
 
-    def iter_init : Iterator
+    def iter_init(context : Interpreter::Context) : Iterator
       NumberIterator.new(@value.to_i)
     end
 
@@ -718,7 +727,7 @@ module TMBSH
         end
       end
 
-      def iter_next : Variant?
+      def iter_next(context : Interpreter::Context) : Variant?
         val = @iterator.next
         return if val.is_a?(::Iterator::Stop)
         return Float.new(val.to_f64)
@@ -837,7 +846,7 @@ module TMBSH
       raise "Cannot ::Set on Range"
     end
 
-    def call(args : ::Array(Variant)) : Variant
+    def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
       raise "Cannot call Range"
     end
 
@@ -853,7 +862,7 @@ module TMBSH
       raise "Cannot convert Range to json"
     end
 
-    def iter_init : Iterator
+    def iter_init(context : Interpreter::Context) : Iterator
       RangeIterator.new(@value)
     end
 
@@ -873,7 +882,7 @@ module TMBSH
         @array = val
       end
 
-      def iter_next : Variant?
+      def iter_next(context : Interpreter::Context) : Variant?
         if @current_idx < @array.size
           idx = @current_idx
           @current_idx += 1
@@ -979,12 +988,12 @@ module TMBSH
         {{name.id.upcase}}_METHOD = TMBSH.method("{{name.id.upcase}}") do
           fn = args[1]?
           raise ArgumentError.new("First argument to {{name.id}} must be a function") unless fn.is_a?(Function)
-          this.{{name.id}}(fn)
+          this.{{name.id}}(context, fn)
         end
         {{name.id.upcase}}_IN_PLACE_METHOD = TMBSH.method("{{name.id.upcase}}_in_place") do
           fn = args[1]?
           raise ArgumentError.new("First argument to {{name.id}} must be a function") unless fn.is_a?(Function)
-          this.{{name.id}}!(fn)
+          this.{{name.id}}!(context, fn)
         end
       {% end %}
     REDUCE_METHOD = TMBSH.method("reduce") do
@@ -992,11 +1001,11 @@ module TMBSH
         initial_value = args[1]
         fn = args[2]
         raise ArgumentError.new("Expected argument 2 to be a Function") unless fn.is_a?(Function)
-        this.reduce(args[1], fn)
+        this.reduce(context, args[1], fn)
       elsif args.size == 2
         fn = args[1]
         raise ArgumentError.new("Expected argument 1 to be a Function") unless fn.is_a?(Function)
-        this.reduce(fn)
+        this.reduce(context, fn)
       else
         raise ArgumentError.new("Expected 1 or 2 arguments (optional initial value and callback)") unless args.size == 3
       end
@@ -1007,11 +1016,11 @@ module TMBSH
         if_none = args[2]
         fn = args[1]
         raise ArgumentError.new("Expected argument 2 to be a Function") unless fn.is_a?(Function)
-        this.find(fn, if_none)
+        this.find(context, fn, if_none)
       elsif args.size == 2
         fn = args[1]
         raise ArgumentError.new("Expected argument 1 to be a Function") unless fn.is_a?(Function)
-        this.find(fn)
+        this.find(context, fn)
       else
         raise ArgumentError.new("Expected 1 or 2 arguments (optional initial value and callback)") unless args.size == 3
       end
@@ -1038,7 +1047,7 @@ module TMBSH
     PARTITION_METHOD = TMBSH.method("partition") do
       fn = args[1]?
       raise ArgumentError.new("Expected first and only argument to be a Function") unless fn.is_a?(Function)
-      this.partition(fn)
+      this.partition(context, fn)
     end
 
     DECODE_METHOD = TMBSH.method("decode") do
@@ -1146,7 +1155,7 @@ module TMBSH
       @value[key.to_i64] = value
     end
 
-    def call(args : ::Array(Variant)) : Variant
+    def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
       raise TypeError.new("Cannot call Array")
     end
 
@@ -1221,7 +1230,7 @@ module TMBSH
       Array.new(sorted_arr)
     end
 
-    def iter_init : Iterator
+    def iter_init(context : Interpreter::Context) : Iterator
       ArrayIterator.new(@value)
     end
 
@@ -1230,55 +1239,55 @@ module TMBSH
       true
     end
 
-    def map!(fn : Function)
+    def map!(context : Interpreter::Context, fn : Function)
       @value.map! do |var|
-        fn.call([var] of Variant)
+        fn.call(context, [var] of Variant)
       end
       self
     end
 
-    def map(fn : Function)
-      dup.map!(fn)
+    def map(context : Interpreter::Context, fn : Function)
+      dup.map!(context, fn)
     end
 
-    def select!(fn : Function)
+    def select!(context : Interpreter::Context, fn : Function)
       @value.select! do |var|
-        fn.call([var] of Variant).truthy?
+        fn.call(context, [var] of Variant).truthy?
       end
       self
     end
 
-    def select(fn : Function)
-      dup.select!(fn)
+    def select(context, fn : Function)
+      dup.select!(context, fn)
     end
 
-    def reject!(fn : Function)
+    def reject!(context : Interpreter::Context, fn : Function)
       @value.reject! do |var|
-        fn.call([var] of Variant).truthy?
+        fn.call(context, [var] of Variant).truthy?
       end
       self
     end
 
-    def reject(fn : Function)
-      dup.reject!(fn)
+    def reject(context : Interpreter::Context, fn : Function)
+      dup.reject!(context, fn)
     end
 
-    def reduce(fn : Function)
+    def reduce(context : Interpreter::Context, fn : Function)
       initial_value = @value[0]
       @value[1..].reduce(initial_value) do |acc, i|
-        fn.call([acc, i] of Variant)
+        fn.call(context, [acc, i] of Variant)
       end
     end
 
-    def reduce(initial_value : Variant, fn : Function)
+    def reduce(context : Interpreter::Context, initial_value : Variant, fn : Function)
       @value.reduce(initial_value) do |acc, i|
-        fn.call([acc, i] of Variant)
+        fn.call(context, [acc, i] of Variant)
       end
     end
 
-    def find(fn : Function, if_none : Variant = NULL)
+    def find(context : Interpreter::Context, fn : Function, if_none : Variant = NULL)
       @value.find(if_none) do |item|
-        fn.call([item] of Variant).truthy?
+        fn.call(context, [item] of Variant).truthy?
       end
     end
 
@@ -1300,29 +1309,11 @@ module TMBSH
       return "" if @value.empty?
       str_arr = @value.map &.to_s
       str_arr.join(sep)
-      # bytesize = str_arr.reduce(0) { |acc, item| acc + item.bytesize} + sep.bytesize * (str_arr.size - 1)
-      # bytesize, codepoints_count = str_arr.reduce({0, 0}) { |acc, item| {acc[0] + item.bytesize, acc[1] + item.size}}
-      # sep_count = str_arr.size - 1
-      # bytesize += sep.bytesize * sep_count
-      # codepoints_count += sep.size * sep_count
-      # # codepoints_count = str_arr.reduce(0) { |acc, item| acc + item.size} + sep.size * (str_arr.size - 1)
-      # ::String.new(bytesize) do |buffer|
-      #   io = buffer.appender
-      #   str_arr[0...-1].each do |item|
-      #     item.each_byte { |b| io << b }
-      #     sep.each_byte { |b| io << b}
-      #     # io << item
-      #     # io << sep
-      #   end
-      #   # io << str_arr[-1]
-      #   str_arr.last.each_byte { |b| io << b }
-      #   {bytesize, codepoints_count}
-      # end
     end
 
-    def partition(func : Function) : Array
+    def partition(context : Interpreter::Context, func : Function) : Array
       a, b = @value.partition do |val|
-        func.call([val] of Variant).truthy?
+        func.call(context, [val] of Variant).truthy?
       end
       a = Array.new(a)
       b = Array.new(b)
@@ -1522,7 +1513,7 @@ module TMBSH
       self.class.new(@value.clone)
     end
 
-    def call(args : ::Array(Variant)) : Variant
+    def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
       raise TypeError.new("Cannot call Set")
     end
 
@@ -1538,8 +1529,8 @@ module TMBSH
       @value.to_json(builder)
     end
 
-    def iter_init : Iterator
-      to_sharr.iter_init
+    def iter_init(context : Interpreter::Context) : Iterator
+      to_sharr.iter_init(context)
     end
 
     def truthy? : ::Bool
@@ -1624,7 +1615,7 @@ module TMBSH
         @str = val
       end
 
-      def iter_next : Variant?
+      def iter_next(context : Interpreter::Context) : Variant?
         if @current_idx < @str.size
           idx = @current_idx
           @current_idx += 1
@@ -1660,7 +1651,7 @@ module TMBSH
         self
       end
 
-      def iter_next : Variant?
+      def iter_next(context : Interpreter::Context) : Variant?
         val = @dir_iter.next
         return val.is_a?(::String) ? String.new(val) : nil
       end
@@ -1674,7 +1665,7 @@ module TMBSH
         @next_dirs << [Path[path]] of Path
       end
 
-      def iter_next : Variant?
+      def iter_next(context : Interpreter::Context) : Variant?
         if first = @next_dirs.first?
           path = first.pop
           entries = Dir.children(path)
@@ -2046,7 +2037,7 @@ module TMBSH
       raise "Cannot ::Set on String"
     end
 
-    def call(args : ::Array(Variant)) : Variant
+    def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
       raise "Cannot call String"
     end
 
@@ -2081,7 +2072,7 @@ module TMBSH
       )
     end
 
-    def iter_init : Iterator
+    def iter_init(context : Interpreter::Context) : Iterator
       StringIterator.new(@value)
     end
 
@@ -2140,7 +2131,7 @@ module TMBSH
         @keys = val.keys
       end
 
-      def iter_next : Variant?
+      def iter_next(context : Interpreter::Context) : Variant?
         if @current_idx < @keys.size
           key = @keys[@current_idx]
           @current_idx += 1
@@ -2312,7 +2303,7 @@ module TMBSH
       @value[key] = value
     end
 
-    def call(args : ::Array(Variant)) : Variant
+    def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
       raise "Cannot call Dictionary"
     end
 
@@ -2345,7 +2336,7 @@ module TMBSH
       end
     end
 
-    def iter_init : Iterator
+    def iter_init(context : Interpreter::Context) : Iterator
       DictionaryIterator.new(@value)
     end
 
@@ -2406,7 +2397,7 @@ module TMBSH
       Array.new
     end
 
-    def call(args : ::Array(Variant)) : Variant
+    def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
       raise "Cannot call Null"
     end
 
@@ -2450,7 +2441,7 @@ module TMBSH
       builder.null
     end
 
-    def iter_init : Iterator
+    def iter_init(context : Interpreter::Context) : Iterator
       raise "Cannot iterate over Null"
     end
 
@@ -2545,7 +2536,7 @@ module TMBSH
       self
     end
 
-    def call(args : ::Array(Variant)) : Variant
+    def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
       raise "Cannot call a Bool"
     end
 
@@ -2561,7 +2552,7 @@ module TMBSH
       builder.bool(@value)
     end
 
-    def iter_init : Iterator
+    def iter_init(context : Interpreter::Context) : Iterator
       raise "Cannot iterate over Bool"
     end
 
@@ -2571,7 +2562,7 @@ module TMBSH
   end
 
   class Function < Variant
-    @proc : Proc(::Array(Variant), Variant?)? = nil
+    @proc : Proc(Interpreter::Context, ::Array(Variant), Variant?)? = nil
     property name : ::String?
     property parent_class : ::String?
     @binded_args : ::Array(Variant)
@@ -2600,17 +2591,17 @@ module TMBSH
       @binded_args = [] of Variant
     end
 
-    def initialize(proc : Proc(::Array(Variant), Variant?)?, binded_args : ::Array(Variant))
+    def initialize(proc : Proc(Interpreter::Context, ::Array(Variant), Variant?)?, binded_args : ::Array(Variant))
       @proc = proc
       @binded_args = binded_args
     end
 
-    def initialize(proc : Proc(::Array(Variant), Variant?)?)
+    def initialize(proc : Proc(Interpreter::Context, ::Array(Variant), Variant?)?)
       @proc = proc
       @binded_args = [] of Variant
     end
 
-    def initialize(@parent_class : ::String, @name : ::String, proc : Proc(::Array(Variant), Variant?)?)
+    def initialize(@parent_class : ::String, @name : ::String, proc : Proc(Interpreter::Context, ::Array(Variant), Variant?)?)
       @proc = proc
       @binded_args = [] of Variant
     end
@@ -2663,9 +2654,9 @@ module TMBSH
       self.class.new(@proc, @binded_args.clone)
     end
 
-    def call(args : ::Array(Variant)) : Variant
+    def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
       begin
-        @proc.try &.call(@binded_args.empty? ? args : @binded_args + args) || TMBSH::NULL
+        @proc.try &.call(context, @binded_args.empty? ? args : @binded_args + args) || TMBSH::NULL
       rescue e : Exception
         raise e.class.new(e.message.to_s + " (When calling #{to_s})")
       end
@@ -2683,7 +2674,7 @@ module TMBSH
       raise "Cannot convert function to JSON"
     end
 
-    def iter_init : Iterator
+    def iter_init(context : Interpreter::Context) : Iterator
       raise "Cannot iterate over Function"
     end
 
@@ -2830,7 +2821,7 @@ module TMBSH
       raise "Cannot clone File"
     end
 
-    def call(args : ::Array(Variant)) : Variant
+    def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
       raise "Cannot call File"
     end
 
@@ -2846,7 +2837,7 @@ module TMBSH
       raise "Cannot convert File to JSON"
     end
 
-    def iter_init : Iterator
+    def iter_init(context : Interpreter::Context) : Iterator
       raise "WIP"
     end
 
@@ -2942,7 +2933,7 @@ module TMBSH
       raise "Cannot ::Set on Status"
     end
 
-    def call(args : ::Array(Variant)) : Variant
+    def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
       raise "Cannot call Status"
     end
 
@@ -2964,7 +2955,7 @@ module TMBSH
       @exit_code.to_json(builder)
     end
 
-    def iter_init : Iterator
+    def iter_init(context : Interpreter::Context) : Iterator
       raise "Cannot iterate over status"
     end
 
@@ -3052,7 +3043,7 @@ module TMBSH
       raise TypeError.new("Cannot set key on Promise")
     end
 
-    def call(args : ::Array(Variant)) : Variant
+    def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
       raise TypeError.new("Cannot call Status")
     end
 
@@ -3068,7 +3059,7 @@ module TMBSH
       raise TypeError.new("Cannot convert Promise to JSON")
     end
 
-    def iter_init : Iterator
+    def iter_init(context : Interpreter::Context) : Iterator
       raise TypeError.new("Cannot iterate over Promise")
     end
 
