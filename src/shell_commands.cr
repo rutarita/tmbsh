@@ -12,7 +12,7 @@ class Interpreter
     end,
     "yield" => YIELD_COMMAND,
     "sleep" => SLEEP_COMMAND,
-    "tmbshgc" => GC_COMMAND,
+    "tmbsh" => TMBSH_COMMAND,
   } of ::String => ShellCommand
 
   private macro builtin(&body)
@@ -123,29 +123,44 @@ HELP
       end
     end
   end
-GC_USAGE = <<-HELP
+TMBSH_GC_USAGE = <<-HELP
 Usage:
 tmbshgc collect|disable|enable
 HELP
-  GC_COMMAND = builtin do
-    if args.size == 0
-      output.try &.puts GC_USAGE
-      CommandFinish.new(0)
-    else
-      case args[0]
-        when "collect"
-          GC.collect
-          CommandFinish.new(0)
-        when "disable"
-          GC.disable
-          CommandFinish.new(0)
-        when "enable"
-          GC.enable
+
+TMBSH_USAGE = <<-HELP
+Usage:
+tmbsh gc|soontocome
+
+HELP
+  TMBSH_COMMAND = builtin do
+    case args[0]?
+      when "gc"
+        if args.size == 1
+          output.try &.puts TMBSH_GC_USAGE
           CommandFinish.new(0)
         else
-          error.try &.puts "Unknown command: #{args[0]}"
-          CommandFinish.new(1)
-      end
+        case args[1]
+          when "collect"
+            GC.collect
+            CommandFinish.new(0)
+          when "disable"
+            GC.disable
+            CommandFinish.new(0)
+          when "enable"
+            GC.enable
+            CommandFinish.new(0)
+          else
+            error.try &.puts "Unknown command: #{args[0]}"
+            CommandFinish.new(1)
+        end
+        end
+      when "sucks"
+          output.try &.puts "it does"
+          CommandFinish.new(11)
+      else
+        output.try &.puts TMBSH_USAGE
+        CommandFinish.new(0)
     end
   end
 end
