@@ -2985,9 +2985,13 @@ module TMBSH
       end
     end
 
+    AWAITED_METHOD = TMBSH.method("awaited?") do
+      this.@channel.closed? ? TRUE : FALSE
+    end
+
     @@methods = {
       "await"   => AWAIT_METHOD,
-
+      "awaited?" => AWAITED_METHOD,
       "is_a?"   => IS_A_METHOD,
       "eq"      => EQ_METHOD,
       "neq"     => NEQ_METHOD,
@@ -3068,14 +3072,19 @@ module TMBSH
     end
 
     def await : Variant
+      return NULL if @channel.closed?
       Fiber.yield
-      @channel.receive
+      val = @channel.receive
+      @channel.close
+      val
     end
 
     def await(time : Time::Span) : Variant
+      return NULL if @channel.closed?
       Fiber.yield
       select
         when val = @channel.receive
+          @channel.close
           val
         when timeout(time)
           NULL
