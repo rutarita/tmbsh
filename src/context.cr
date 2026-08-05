@@ -7,12 +7,13 @@ module TMBSH
       property input : IO?
       property error : IO?
       property interpreter : Interpreter
-      property variable_stack : VariableStack?
+      property variable_stacks : ::Array(VariableStack)
       property cwd : ::String
       property original : ::Bool
 
       def initialize(interpreter : Interpreter)
         @interpreter = interpreter
+        @variable_stacks = [interpreter.variable_stack]
         @cwd = interpreter.cwd
         @output = STDOUT
         @input = STDIN
@@ -26,14 +27,15 @@ module TMBSH
         ctx.input = @input
         ctx.error = @error
         ctx.interpreter = interpreter
-        ctx.variable_stack = variable_stack
+        ctx.variable_stacks = @variable_stacks.dup
         ctx.cwd = cwd
         ctx.original = false
         ctx
       end
 
       def current_variable_stack
-        @variable_stack || @interpreter.variable_stack
+        # @variable_stack || @interpreter.variable_stack
+        @variable_stacks.last
       end
 
       def enter_scope
@@ -53,11 +55,16 @@ module TMBSH
       end
 
       def get_variable(name : ::String)
-        if varstack = @variable_stack
-          val = varstack[name]
+        variable_stacks.reverse_each do |stack|
+          val = stack[name]
           return val unless val.is_a?(Null)
         end
-        interpreter.get_variable(name)
+        NULL
+      end
+
+      def add_variable_stack
+        # raise
+        @variable_stacks << VariableStack.new
       end
     end
   end

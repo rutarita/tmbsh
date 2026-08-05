@@ -188,6 +188,14 @@ module TMBSH
     String.new(typename)
   end
 
+  VARS_FUNCTION = TMBSH.tl_function do
+    map = {} of Variant => Variant
+    context.current_variable_stack.@vars.last.each do |k,v|
+      map[String.new(k)] = v
+    end
+    Dictionary.new(map)
+  end
+
   TOP_LEVEL_VALUES = {
     "true"      => TRUE,
     "false"     => FALSE,
@@ -204,5 +212,6 @@ module TMBSH
     "min"       => MIN_FUNCTION,
     "time"      => TIME_FUNCTION,
     "typeof"    => TYPE_OF_FUNCTION,
+    "vars"      => VARS_FUNCTION,
   } of ::String => Variant
 end

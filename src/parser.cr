@@ -476,15 +476,15 @@ module TMBSH
       assignments
     end
 
-    private def parse_command_with_assignments
+    private def parse_command_with_assignments(*stop_tokens)
       assignments = parse_assignments
       skip_whitespaces
-      command = parse_command
+      command = parse_command(*stop_tokens)
       command.env_vars_pairs = assignments
       command
     end
 
-    def parse_command(*stop_at) : Interpreter::CommandNode
+    def parse_command(*stop_tokens) : Interpreter::CommandNode
       # parts = [] of Interpreter::ValueNode
       # initial_command = Interpreter::CommandNode.new
       command = Interpreter::CommandNode.new
@@ -496,21 +496,21 @@ module TMBSH
           when .and_operator?
             next_token
             skip_whitespaces_and_newlines
-            next_command = parse_command_with_assignments
+            next_command = parse_command_with_assignments(*stop_tokens)
             command.proceed_type = :OnSuccess
             command.proceeding = next_command
             break
           when .or_operator?
             next_token
             skip_whitespaces_and_newlines
-            next_command = parse_command_with_assignments
+            next_command = parse_command_with_assignments(*stop_tokens)
             command.proceed_type = :OnFail
             command.proceeding = next_command
             break
           when .pipe?
             next_token
             skip_whitespaces_and_newlines
-            next_command = parse_command_with_assignments
+            next_command = parse_command_with_assignments(*stop_tokens)
             command.proceed_type = :Pipe
             command.proceeding = next_command
             break
@@ -534,10 +534,10 @@ module TMBSH
             next_token
             skip_whitespaces
             command.fork_command = true
-            raise "Expected end of statement after ampersand" unless token.eos? || token.kind.in?(stop_at)
+            raise UnexpectedToken.new("Expected end of statement after ampersand") unless token.eos? || token.kind.in?(stop_tokens)
             break
           else
-            break if token.kind.in?(stop_at)
+            break if token.kind.in?(stop_tokens)
             command << parse_value
         end
         # break if token.eos?

@@ -213,6 +213,7 @@ module TMBSH
           begin
           statement = parser.parse_statement
           rescue e
+            raise e
             puts "tmsbh: Parsing error: #{e.to_s}"
             return
           end
