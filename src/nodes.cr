@@ -121,18 +121,17 @@ module TMBSH
         args_size = @args.size + 1
         args = ::Array(Variant).build(args_size) do |ptr|
           ptr[0] = to
-          idx = 0
-          @args.each do |item|
-            idx += 1
+          @args.each_with_index(1) do |item, idx|
             ptr[idx] = item.evaluate(context)
           end
           args_size
         end
         # {%if flag?(:method_hash_caching)%}
+          # p! "after call"
         if method = to.get_method(@method_hash)
           method.call(context, args)
         else
-        to.get_method(@method_name).call(context, args)
+          to.get_method(@method_name).call(context, args)
         end
         # {% else %}
         # to.get_method(@method_name).call(context, args)

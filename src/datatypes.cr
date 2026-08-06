@@ -146,15 +146,16 @@ module TMBSH
     abstract def truthy? : ::Bool
 
     # {% if flag?(:method_hash_caching) %}
-      def get_method(method_hash : UInt64) : Function?
-        @@methods_hash_cache[method_hash]?
-      end
+    def get_method(method_hash : UInt64) : Function?
+      @@methods_hash_cache[method_hash]?
+    end
+
     # {% end %}
 
     def get_method(name : ::String)
       if method = @@methods[name]?
         # {% if flag?(:method_hash_caching) %}
-          @@methods_hash_cache[name.hash] = method
+        @@methods_hash_cache[name.hash] = method
         # {% end %}
         method
       else
@@ -251,6 +252,7 @@ module TMBSH
       this.fold(context, into, func)
     end
 
+    @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     @@methods = {
       "next"   => NEXT_METHOD,
       "to_a"   => TO_A_METHOD,
@@ -541,7 +543,8 @@ module TMBSH
         String.new(this.to_s)
       {% end %}
     end
-    @@methods = {
+    @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
+@@methods = {
       "add"         => ADD_METHOD,
       "sub"         => SUB_METHOD,
       "mul"         => MUL_METHOD,
@@ -768,6 +771,7 @@ module TMBSH
       end
     end
 
+    @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     @@methods = {
       "begin" => BEGIN_METHOD,
       "end"   => END_METHOD,
@@ -1054,6 +1058,7 @@ module TMBSH
       this.decode
     end
 
+    @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     @@methods = {
       "size"      => SIZE_METHOD,
       "append"    => APPEND_METHOD,
@@ -1091,7 +1096,7 @@ module TMBSH
       "is_a?"    => IS_A_METHOD,
       "iter"     => ITER_METHOD,
       "truthy?"  => TRUTHY_METHOD,
-      "eq"      => EQ_METHOD,
+      "eq"       => EQ_METHOD,
       "sort"     => SORT_METHOD,
       "sort_num" => SORT_NUM_METHOD,
       "orelse"   => ORELSE_METHOD,
@@ -1426,6 +1431,7 @@ module TMBSH
       this
     end
 
+    @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     @@methods = {
       "add"                 => ADD_METHOD,
       "delete"              => DELETE_METHOD,
@@ -1447,7 +1453,7 @@ module TMBSH
       "clear"               => CLEAR_METHOD,
 
       "is_a?"   => IS_A_METHOD,
-      "eq"     => EQ_METHOD,
+      "eq"      => EQ_METHOD,
       "str"     => STR_METHOD,
       "orelse"  => ORELSE_METHOD,
       "truthy?" => TRUTHY_METHOD,
@@ -1912,6 +1918,7 @@ module TMBSH
       File.new(this.@value, modes)
     end
 
+    @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     @@methods = {
       # string operations
       "size"         => SIZE_METHOD,
@@ -1965,7 +1972,7 @@ module TMBSH
 
       "is_a?"   => IS_A_METHOD,
       "iter"    => ITER_METHOD,
-      "eq"     => EQ_METHOD,
+      "eq"      => EQ_METHOD,
       "orelse"  => ORELSE_METHOD,
       "truthy?" => TRUTHY_METHOD,
       "dup"     => DUP_METHOD,
@@ -2206,6 +2213,7 @@ module TMBSH
       this.@value.has_value?(args[1]) ? TRUE : FALSE
     end
 
+    @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     @@methods = {
       "fetch"      => FETCH_METHOD,
       "keys"       => KEYS_METHOD,
@@ -2219,7 +2227,7 @@ module TMBSH
       "iter"       => ITER_METHOD,
 
       "is_a?"   => IS_A_METHOD,
-      "eq"     => EQ_METHOD,
+      "eq"      => EQ_METHOD,
       "orelse"  => ORELSE_METHOD,
       "truthy?" => TRUTHY_METHOD,
       "dup"     => DUP_METHOD,
@@ -2356,6 +2364,7 @@ module TMBSH
     ERANGE_METHOD = TMBSH.method("erange") do
       Range.new(nil, args[1]?.try &.to_i64, true)
     end
+    @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     @@methods = {
       "range"  => RANGE_METHOD,
       "erange" => ERANGE_METHOD,
@@ -2476,6 +2485,7 @@ module TMBSH
       String.new(this.@value ? "True" : "False")
     end
 
+    @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     @@methods = {
       "or"  => OR_METHOD,
       "and" => AND_METHOD,
@@ -2572,6 +2582,7 @@ module TMBSH
       this.bind(binded)
     end
 
+    @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     @@methods = {
       "is_a?" => IS_A_METHOD,
       "eq"    => EQ_METHOD,
@@ -2751,6 +2762,7 @@ module TMBSH
       NULL
     end
 
+    @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     @@methods = {
 
       # "write"  => WRITE_METHOD,
@@ -2870,6 +2882,7 @@ module TMBSH
       status ? String.new(status.description) : NULL
     end
 
+    @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     @@methods = {
       "float" => FLOAT_METHOD,
       "int"   => INT_METHOD,
@@ -2968,17 +2981,16 @@ module TMBSH
     # @fiber : Fiber
     @channel : Channel(Variant)
 
-
     AWAIT_METHOD = TMBSH.method("await") do
       raise ArgumentError.new("Expected 0..1 arguments for await") unless args.size < 2
       if time = args[1]?
         time = if time.is_a?(Int)
-          time.@value.seconds
-        elsif time.is_a?(Float)
-          time.@value.seconds
-        else
-          raise TypeError.new("Expected Int or Float as first argument to await")
-        end
+                 time.@value.seconds
+               elsif time.is_a?(Float)
+                 time.@value.seconds
+               else
+                 raise TypeError.new("Expected Int or Float as first argument to await")
+               end
         this.await(time)
       else
         this.await
@@ -2989,16 +3001,17 @@ module TMBSH
       this.@channel.closed? ? TRUE : FALSE
     end
 
+    @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     @@methods = {
-      "await"   => AWAIT_METHOD,
+      "await"    => AWAIT_METHOD,
       "awaited?" => AWAITED_METHOD,
-      "is_a?"   => IS_A_METHOD,
-      "eq"      => EQ_METHOD,
-      "neq"     => NEQ_METHOD,
-      "orelse"  => ORELSE_METHOD,
-      "truthy?" => TRUTHY_METHOD,
-      "dup"     => DUP_METHOD,
-      "clone"   => CLONE_METHOD,
+      "is_a?"    => IS_A_METHOD,
+      "eq"       => EQ_METHOD,
+      "neq"      => NEQ_METHOD,
+      "orelse"   => ORELSE_METHOD,
+      "truthy?"  => TRUTHY_METHOD,
+      "dup"      => DUP_METHOD,
+      "clone"    => CLONE_METHOD,
     } of ::String => Function
 
     @@type_aliases = ::Set{"promise"}
@@ -3083,11 +3096,11 @@ module TMBSH
       return NULL if @channel.closed?
       Fiber.yield
       select
-        when val = @channel.receive
-          @channel.close
-          val
-        when timeout(time)
-          NULL
+      when val = @channel.receive
+        @channel.close
+        val
+      when timeout(time)
+        NULL
       end
     end
   end

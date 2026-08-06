@@ -198,7 +198,16 @@ module TMBSH
         when .string?
           str = token.raw_value
           next_token
-          val = str.to_i64?(whitespace: true, underscore: true, prefix: true, leading_zero_is_octal: true) ||
+          prefix, octal = if str.size > 1 && str[0] == '0'
+            if str[1]?.in?('b', 'x')
+              {true, false}
+            else
+              {false, true}
+            end
+          else
+            {false, false}
+          end
+          val = str.to_i64?(whitespace: true, underscore: true, prefix: prefix, leading_zero_is_octal: octal) ||
           str.to_f64?
           case val
           when Int64
