@@ -24,12 +24,13 @@ class Shell
   end
 
   def mainloop
+    context = Interpreter::Context.new(@interpreter)
     loop do
       input = ReadLine.readline("$ ")
       if input
         if !input.empty?
           ReadLine.add_history(input)
-          @interpreter.execute_string(input)
+          @interpreter.execute_string(input, context: context)
         end
       else
         break

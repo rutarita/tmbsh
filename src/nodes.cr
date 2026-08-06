@@ -331,9 +331,15 @@ module TMBSH
         @parts.empty?
       end
 
-      @@string_pool : StringPool = StringPool.new
+      @string_variant_cache : ::Hash(::String, String) = {} of ::String => String
       private def create_string(str)
-        String.new(@@string_pool.get(str))
+        if variant = @string_variant_cache[str]?
+          variant
+        else
+          variant = String.new(str)
+          @string_variant_cache[str] = variant
+          variant
+        end
       end
 
       private def expand_path(cwd : ::String, dir_path : Path?, pattern : Regex | ::String, dirs_only : ::Bool) : ::Array(Path)?
@@ -520,10 +526,10 @@ module TMBSH
         @pure_string
       end
 
-      def make_string : ::String
+      def to_single_value_node : SingleValueNode
       if @parts.size == 1
           part = @parts[0]
-          return part.to_s
+          return SingleValueNode.new(create_string(part.to_s))
         end
         str = ::String.build do |io|
           @parts.each do |part|
@@ -531,6 +537,7 @@ module TMBSH
             io << part.to_s
           end
         end
+        SingleValueNode.new(create_string(str))
       end
 
       def add_path_separator

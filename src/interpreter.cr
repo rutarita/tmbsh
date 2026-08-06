@@ -207,7 +207,8 @@ module TMBSH
       end
     end
 
-    private def execute_parsable(parsable)
+    private def execute_parsable(parsable, context = nil)
+      context = Context.new(self) unless context
       parser = Parser.new(parsable)
       until parser.token.kind.eof?
           begin
@@ -217,35 +218,36 @@ module TMBSH
             return
           end
           begin
-            execute_statement(statement)
+            statement.execute(context)
           rescue e
             puts "tmbsh: Exception: #{e.to_s}"
           end
       end
     end
 
-    private def execute_parsable_with_errors(parsable)
+    private def execute_parsable_with_errors(parsable, context = nil)
+      context = Context.new(self) unless context
       parser = Parser.new(parsable)
       until parser.token.kind.eof?
         statement = parser.parse_statement
-        execute_statement(statement)
+        statement.execute(context)
       end
     end
-    def execute_string(string : ::String, raise_on_error : ::Bool = false)
+    def execute_string(string : ::String, *, raise_on_error : ::Bool = false, context : Context? = nil)
       unless raise_on_error
-          execute_parsable(string)
+          execute_parsable(string, context)
         else
-          execute_parsable_with_errors(string)
+          execute_parsable_with_errors(string, context)
         end
     end
 
-    def execute_file(path : ::String | Path, raise_on_error : ::Bool = false)
+    def execute_file(path : ::String | Path, *, raise_on_error : ::Bool = false, context : Context? = nil)
       # string = ::File.read(path)
       ::File.open(path) do |io|
         unless raise_on_error
-          execute_parsable(io)
+          execute_parsable(io, context)
         else
-          execute_parsable_with_errors(io)
+          execute_parsable_with_errors(io, context)
         end
       end
       # execute_string(string)
@@ -253,19 +255,6 @@ module TMBSH
 
     def reset
       @variable_stack = VariableStack.new
-      @variable_stack.strict = @strict
-    end
-
-
-    @variable_stack_stack : ::Array(VariableStack) = [] of VariableStack
-    def enter_variable_context
-      @variable_stack_stack << @variable_stack
-      @variable_stack = VariableStack.new
-      @variable_stack.strict = @strict
-    end
-
-    def exit_variable_context
-      @variable_stack = @variable_stack_stack.pop
       @variable_stack.strict = @strict
     end
   end

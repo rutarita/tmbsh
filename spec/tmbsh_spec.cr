@@ -8,7 +8,7 @@ describe TMBSH do
       Dir.children(path).each do |file|
         target = path / file
         puts "Executing #{target}..."
-        interpreter.execute_file(target, true)
+        interpreter.execute_file(target, raise_on_error: true)
         puts
         interpreter.reset
       end

@@ -13,6 +13,7 @@ class Interpreter
     "yield" => YIELD_COMMAND,
     "sleep" => SLEEP_COMMAND,
     "tmbsh" => TMBSH_COMMAND,
+    "source" => SOURCE_COMMAND,
   } of ::String => ShellCommand
 
   private macro builtin(&body)
@@ -162,6 +163,48 @@ HELP
         output.try &.puts TMBSH_USAGE
         CommandFinish.new(0)
     end
+  end
+
+SOURCE_USAGE = <<-HELP
+Usage:
+source [-c|--preserve-context] [FILES]
+HELP
+
+  SOURCE_COMMAND = builtin do
+    if args.size == 0
+      output.try &.puts SOURCE_USAGE
+      return CommandFinish.new(0)
+    end
+    preserve_context = false
+    files = [] of ::String
+    args.each do |arg|
+      if arg[0] == '-'
+        if arg == "-c" || arg == "--preserve-context"
+          preserve_context = true
+        else
+          error.try &.puts "tmbsh: source: Unknown parameter: #{arg}"
+          return CommandFinish.new(1)
+        end
+      else
+        files << arg
+      end
+    end
+    final_status = 0
+    files.each do |file|
+      if ::File.file?(file)
+        unless preserve_context
+          file_context = context.dup
+          file_context.add_variable_stack
+        else
+          file_context = context
+        end
+        context.interpreter.execute_file(file, context: context)
+      else
+        error.try &.puts "tmbsh: source: #{file}: file not found"
+        final_status = 1
+      end
+    end
+    CommandFinish.new(final_status)
   end
 end
 end

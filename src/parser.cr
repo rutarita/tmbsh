@@ -106,7 +106,6 @@ module TMBSH
       Token::Kind::GreaterThan,
       Token::Kind::LessThan,
     })
-    @string_single_nodes_cache : ::Hash(::String, Interpreter::SingleValueNode) = {} of ::String => Interpreter::SingleValueNode
     def parse_string : Interpreter::SingleValueNode | Interpreter::StringNode
       string_mode = StringMode::Plain
       buf = IO::Memory.new
@@ -186,16 +185,7 @@ module TMBSH
       end
       # Interpreter::SingleValueNode.new(String.new(buf.to_s))
       if string_node.pure_string?
-        str = string_node.make_string
-        if node = @string_single_nodes_cache[str]?
-          node
-        else
-          node = Interpreter::SingleValueNode.new(
-            String.new(str)
-          )
-          @string_single_nodes_cache[str] = node
-          node
-        end
+        string_node.to_single_value_node
       else
         string_node
       end
