@@ -128,15 +128,15 @@ module TMBSH
           end
           args_size
         end
-        {%if flag?(:method_hash_caching)%}
+        # {%if flag?(:method_hash_caching)%}
         if method = to.get_method(@method_hash)
           method.call(context, args)
         else
         to.get_method(@method_name).call(context, args)
         end
-        {% else %}
-        to.get_method(@method_name).call(context, args)
-        {% end %}
+        # {% else %}
+        # to.get_method(@method_name).call(context, args)
+        # {% end %}
       end
     end
 

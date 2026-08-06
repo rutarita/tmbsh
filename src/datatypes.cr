@@ -145,17 +145,17 @@ module TMBSH
 
     abstract def truthy? : ::Bool
 
-    {% if flag?(:method_hash_caching) %}
+    # {% if flag?(:method_hash_caching) %}
       def get_method(method_hash : UInt64) : Function?
         @@methods_hash_cache[method_hash]?
       end
-    {% end %}
+    # {% end %}
 
     def get_method(name : ::String)
       if method = @@methods[name]?
-        {% if flag?(:method_hash_caching) %}
+        # {% if flag?(:method_hash_caching) %}
           @@methods_hash_cache[name.hash] = method
-        {% end %}
+        # {% end %}
         method
       else
         raise MethodDoesNotExist.new("Method #{name} doesn't exist on #{self.class}")
