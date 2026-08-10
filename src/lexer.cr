@@ -309,8 +309,9 @@ module TMBSH
             @token.raw_value = "->"
           end
         else
-          next_char :String
-          @token.raw_value = "-"
+          str = consume_string
+          @token.kind = :String
+          @token.raw_value = str
         end
       when '\0'
         token.kind = :EOF
