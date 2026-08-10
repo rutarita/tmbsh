@@ -151,9 +151,11 @@ module TMBSH
   end
 
   MAX_FUNCTION = TMBSH.tl_function do
-    best = nil
-    best_val = -Float64::INFINITY
-    args.each do |num|
+    return NULL if args.size == 0
+    best = args[0]
+    best_val = best.to_f64
+    # best_val = -Float64::INFINITY
+    args.each(within: 1..) do |num|
       val = num.to_f64
       if val > best_val
       best = num
@@ -164,9 +166,10 @@ module TMBSH
   end
 
   MIN_FUNCTION = TMBSH.tl_function do
-    best = nil
-    best_val = Float64::INFINITY
-    args.each do |num|
+    return NULL if args.size == 0
+    best = args[0]
+    best_val = best.to_f64
+    args.each(within: 1..) do |num|
       val = num.to_f64
       if val < best_val
       best = num
