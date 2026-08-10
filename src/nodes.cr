@@ -139,6 +139,38 @@ module TMBSH
       end
     end
 
+    struct AttributeAccess < Action
+      @name : ::String
+      def initialize(name : ::String)
+        @name = name
+      end
+
+      def apply(to : Variant, context : Context) : Variant
+        to.get_attribute(@name)
+      end
+
+      def constant? : ::Bool
+        true
+      end
+    end
+
+    struct AttributeAssignment < Action
+      @name : ::String
+      @value : ValueNode
+      def initialize(name : ::String, value : ValueNode)
+        @name = name
+        @value = value
+      end
+
+      def apply(to : Variant, context : Context) : Variant
+        to.set_attribute(@name, @value.evaluate(context))
+      end
+
+      def constant? : ::Bool
+        @value.constant?
+      end
+    end
+
     struct Call < Action
       @args : ::Array(ValueNode)
 

@@ -361,6 +361,18 @@ module TMBSH
               args = [] of Interpreter::ValueNode
             end
             deq << Interpreter::MethodCall.new(method_name, args)
+          when .inward_arrow_right?
+            next_token
+            unexpected_token unless token.kind.varname?
+            attribute_name = token.raw_value
+            next_token
+            if token.kind.equal?
+              next_token
+              val = parse_value
+              deq << Interpreter::AttributeAssignment.new(attribute_name, val)
+            else
+              deq << Interpreter::AttributeAccess.new(attribute_name)
+            end
           when .parenthesis_open?
             args = parse_func_args
             # p! @lexer.token

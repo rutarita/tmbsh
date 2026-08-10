@@ -18,6 +18,7 @@ class Token
 
     Newline
     ArrowRight
+    InwardArrowRight
     ArrowLeft
     VariableAccess
     Splat
@@ -92,6 +93,7 @@ class Token
       in .at? then "@"
       in .newline? then "\n"
       in .arrow_right? then "->"
+      in .inward_arrow_right? then "-<"
       in .arrow_left? then "<-"
       in .variable_access? then "$"
       in .splat? then "*"

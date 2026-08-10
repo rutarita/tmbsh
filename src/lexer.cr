@@ -297,7 +297,8 @@ module TMBSH
         # @token.raw_value = str
       when '-'
         start_statement
-        if peek_char == '>'
+        pchar = peek_char
+        if pchar == '>'
           if @string_mode.plain?
             @lex_varname = true
             next_char
@@ -307,6 +308,17 @@ module TMBSH
             next_char
             @token.kind = :String
             @token.raw_value = "->"
+          end
+        elsif pchar == '<'
+          if @string_mode.plain?
+            @lex_varname = true
+            next_char
+            next_char :InwardArrowRight
+          else
+            next_char
+            next_char
+            @token.kind = :String
+            @token.raw_value = "-<"
           end
         else
           str = consume_string
@@ -359,7 +371,7 @@ module TMBSH
         start_statement
       end
       skip_comment if @string_mode.plain?
-      @lex_varname = false unless token.kind.variable_access? || token.kind.arrow_right?
+      @lex_varname = false unless token.kind.variable_access? || token.kind.arrow_right? || token.kind.inward_arrow_right?
       # @lex_assignments = false unless token.kind.assignment_to?
       # make sure it finishes lexing tokens as varnames unless we just announced that it should do it
       @token
