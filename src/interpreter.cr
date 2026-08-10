@@ -1,12 +1,8 @@
 require "./datatypes"
 require "./nodes"
 require "./top_level_values"
-{% unless flag?(:old_parsing) %}
-  require "./lexer/*"
-  require "./parser"
-{% else %}
-  require "./regex_based_lexer_parser"
-{% end %}
+require "./lexer/*"
+require "./parser"
 require "./shell_commands"
 require "./variable_stack"
 module TMBSH
