@@ -94,7 +94,7 @@ HELP
   EXPORT_COMMAND = builtin do
     # temporary solution
     args.each do |arg|
-      context.interpreter.export_variable(arg)
+      context.export_variable(arg)
     end
     CommandFinish.new(0)
   end
@@ -194,7 +194,7 @@ HELP
       if ::File.file?(file)
         unless preserve_context
           file_context = context.dup
-          file_context.add_variable_stack
+          file_context.enter_scope
         else
           file_context = context
         end
