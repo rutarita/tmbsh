@@ -194,7 +194,7 @@ HELP
       if ::File.file?(file)
         unless preserve_context
           file_context = context.dup
-          file_context.enter_scope
+          file_context.add_variable_stack
         else
           file_context = context
         end
