@@ -190,12 +190,12 @@ module TMBSH
 
   VARS_FUNCTION = TMBSH.tl_function do
     map = {} of Variant => Variant
-    # context.current_variable_stack.@vars.last.each do |k,v|
-    #   map[String.new(k)] = v
-    # end
-    context.variable_stack.@vars.last.each do |k,v|
+    context.current_variable_stack.@vars.last.each do |k,v|
       map[String.new(k)] = v
     end
+    # context.variable_stack.@vars.last.each do |k,v|
+    #   map[String.new(k)] = v
+    # end
     Dictionary.new(map)
   end
 

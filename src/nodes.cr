@@ -170,7 +170,7 @@ module TMBSH
         args = @args.map &.evaluate(context).as(Variant)
         channel = Channel(Variant).new
         async_context = context.dup
-        # async_context.add_variable_stack
+        async_context.add_variable_stack
         # p! args
         spawn do
           val = to.call(async_context, args)
@@ -823,7 +823,7 @@ module TMBSH
         capture_context = context.dup
         capture_context.output = mem
         capture_context.error = nil if @block_error
-        # capture_context.add_variable_stack
+        capture_context.add_variable_stack
         @body.execute(capture_context)
         str = mem.to_s
         str = str.chomp if @chomp
@@ -836,7 +836,7 @@ module TMBSH
         closed_context.input = nil
         closed_context.output = nil
         closed_context.error = nil
-        # closed_context.add_variable_stack
+        closed_context.add_variable_stack
         res = @body.execute(closed_context)
         if res.is_a?(CommandFinish)
           status = res.status
@@ -1250,7 +1250,7 @@ module TMBSH
         process_context = context
         if @fork_command
           process_context = context.dup
-          # process_context.add_variable_stack
+          process_context.add_variable_stack
         end
         process = create_process(process_context,
         input_io: context.input || Process::Redirect::Close,
