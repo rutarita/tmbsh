@@ -82,9 +82,14 @@ module TMBSH
     def parse_variable_access : Interpreter::SingleValueNode
       # next_token
       unexpected_token("Varname") unless token.kind.varname?
-      node = Interpreter::SingleValueNode.new(
-        Interpreter::VariableRef.new(token.raw_value)
+      name = token.raw_value
+      node = if var = VARIABLES_AS_LITERALS[name]?
+        Interpreter::SingleValueNode.new(var)
+      else
+      Interpreter::SingleValueNode.new(
+        Interpreter::VariableRef.new(name)
       )
+      end
       next_token
       node
     end

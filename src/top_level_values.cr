@@ -220,4 +220,11 @@ module TMBSH
     "typeof"    => TYPE_OF_FUNCTION,
     "vars"      => VARS_FUNCTION,
   } of ::String => Variant
+  VARIABLES_AS_LITERALS = {
+    "true" => TRUE,
+    "false" => FALSE,
+    "null"  => NULL,
+    "print" => PRINT_FUNCTION,
+    "typeof" => TYPE_OF_FUNCTION,
+  } of ::String => Variant
 end
