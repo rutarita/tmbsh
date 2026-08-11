@@ -75,23 +75,47 @@ module TMBSH
           unexpected_token
       end
       actions = parse_actions
-      val.actions = actions
+      val.add_actions actions
       val
     end
 
     def parse_variable_access : Interpreter::SingleValueNode
       # next_token
-      unexpected_token("Varname") unless token.kind.varname?
-      name = token.raw_value
-      node = if var = VARIABLES_AS_LITERALS[name]?
-        Interpreter::SingleValueNode.new(var)
+      if token.kind.varname?
+        name = token.raw_value
+        node = if var = VARIABLES_AS_LITERALS[name]?
+          Interpreter::SingleValueNode.new(var)
+        else
+        Interpreter::SingleValueNode.new(
+          Interpreter::VariableRef.new(name)
+        )
+        end
+        next_token
+        node
+      elsif token.kind.curly_bracket_open?
+        @lexer.lex_varname = true
+        mode = @lexer.string_mode
+        @lexer.string_mode = :Plain
+        next_token
+        unexpected_token("Varname") unless token.kind.varname?
+        name = token.raw_value
+        node = Interpreter::SingleValueNode.new(
+          Interpreter::VariableRef.new(name)
+        )
+        next_token
+        unless token.kind.curly_bracket_close?
+          actions = parse_actions
+          node.add_actions actions
+        end
+        @lexer.string_mode = mode
+        # next_token
+        skip_whitespaces_and_newlines
+        unexpected_token("CurlyBracketClose") unless token.kind.curly_bracket_close?
+        next_token
+        node
       else
-      Interpreter::SingleValueNode.new(
-        Interpreter::VariableRef.new(name)
-      )
+        unexpected_token("Varname", "CurlyBracketOpen")
       end
-      next_token
-      node
     end
 
     PLAIN_STRING_MODE_STOP_TOKENS = ::Set(Token::Kind).new({
@@ -174,12 +198,14 @@ module TMBSH
             string_node.add_path_separator
           when .variable_access?
             next_token
-            unexpected_token unless token.kind.varname?
-            # p! "opegjpho"
-            var = Interpreter::SingleValueNode.new(
-              Interpreter::VariableRef.new(token.raw_value)
-            )
+            # unexpected_token unless token.kind.varname? || token.kind
+            # # p! "opegjpho"
+            # var = Interpreter::SingleValueNode.new(
+            #   Interpreter::VariableRef.new(token.raw_value)
+            # )
+            var = parse_variable_access
             string_node.add_node(var)
+            next
           else
             unexpected_token
         end

@@ -118,10 +118,11 @@ module TMBSH
         next_char_string_or :ParenthesisClose
       when '{'
         start_statement
-        next_char_string_or :CurlyBracketOpen
+        # next_char_string_or :CurlyBracketOpen
+        next_char :CurlyBracketOpen
       when '}'
         start_statement
-        next_char_string_or :CurlyBracketClose
+        next_char :CurlyBracketClose
       when ';'
         end_statement
         next_char_string_or :Semicolon
@@ -412,7 +413,7 @@ module TMBSH
       # end
     end
     @string_mode : StringMode = :Plain
-
+    property string_mode
     private def resolve_escaped(char : Char) : Char
       case char
       when 'n'

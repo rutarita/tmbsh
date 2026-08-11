@@ -228,6 +228,14 @@ module TMBSH
         # puts action
       end
 
+      def add_actions(other_actions : ::Deque(Action))
+        if @actions.empty?
+          @actions = other_actions
+        else
+          @actions.concat(other_actions)
+        end
+      end
+
       protected def apply_actions(to : Variant, context : Context) : Variant
         var = to
         # puts @actions
