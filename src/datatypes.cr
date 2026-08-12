@@ -341,11 +341,11 @@ module TMBSH
     end
 
     def to_f64 : Float64
-      raise "Cannot convert iterator to Float"
+      raise TypeError.new("Cannot convert iterator to Float")
     end
 
     def to_i64 : Int64
-      raise "Cannot convert iterator to Int"
+      raise TypeError.new("Cannot convert iterator to Int")
     end
 
     def to_s : ::String
@@ -369,27 +369,27 @@ module TMBSH
     end
 
     def to_json : ::String
-      raise "Cannot convert Iterator to JSON"
+      raise TypeError.new("Cannot convert Iterator to JSON")
     end
 
     def to_json(builder : JSON::Builder)
-      raise "Cannot convert Iterator to JSON"
+      raise TypeError.new("Cannot convert Iterator to JSON")
     end
 
     def hash : UInt64
-      raise "Do not use Iterator as key"
+      raise TypeError.new("Do not use Iterator as key")
     end
 
     def [](key : Variant) : Variant
-      raise "Cannot do key access on Iterator (Try converting it to array first)"
+      raise TypeError.new("Cannot do key access on Iterator (Try converting it to array first)")
     end
 
     def []?(key : Variant) : Variant
-      raise "Cannot do key access on Iterator (Try converting it to array first)"
+      raise TypeError.new("Cannot do key access on Iterator (Try converting it to array first)")
     end
 
     def []=(key : Variant, value : Variant)
-      raise "Cannot do key assignment on Iterator"
+      raise TypeError.new("Cannot do key assignment on Iterator")
     end
 
     def iter_init(context : Interpreter::Context) : Iterator
@@ -677,19 +677,19 @@ module TMBSH
     end
 
     def [](key : Variant) : Variant
-      raise "Cannot do access on {{name}}"
+      raise TypeError.new("Cannot do access on {{name}}")
     end
 
     def []?(key : Variant) : Variant
-      raise "Cannot do access on {{name}}"
+      raise TypeError.new("Cannot do access on {{name}}")
     end
 
     def []=(key : Variant, value : Variant)
-      raise "Cannot ::Set on {{name}}"
+      raise TypeError.new("Cannot ::Set on {{name}}")
     end
 
     def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
-      raise "Cannot call {{name}}"
+      raise TypeError.new("Cannot call {{name}}")
     end
 
     def ==(other : Variant)
@@ -877,19 +877,19 @@ module TMBSH
     end
 
     def [](key : Variant) : Variant
-      raise "Cannot do access on Range"
+      raise TypeError.new("Cannot do access on Range")
     end
 
     def []?(key : Variant) : Variant
-      raise "Cannot do access on Range"
+      raise TypeError.new("Cannot do access on Range")
     end
 
     def []=(key : Variant, value : Variant)
-      raise "Cannot ::Set on Range"
+      raise TypeError.new("Cannot ::Set on Range")
     end
 
     def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
-      raise "Cannot call Range"
+      raise TypeError.new("Cannot call Range")
     end
 
     def ==(other : Variant)
@@ -897,11 +897,11 @@ module TMBSH
     end
 
     def to_json : ::String
-      raise "Cannot convert Range to json"
+      raise TypeError.new("Cannot convert Range to json")
     end
 
     def to_json(builder : JSON::Builder)
-      raise "Cannot convert Range to json"
+      raise TypeError.new("Cannot convert Range to json")
     end
 
     def iter_init(context : Interpreter::Context) : Iterator
@@ -1352,13 +1352,13 @@ module TMBSH
     {% for i in ["subset_of", "superset_of"] %}
       {{i.id.upcase}}_METHOD = TMBSH.method("{{i.id.upcase}}", 1) do
         other = args[1]
-        raise TypeError.new("Expected the argument to be of type Set") unless other.is_a?(Set)
+        raise ArgumentError.new("Expected the argument to be of type Set") unless other.is_a?(Set)
         this.{{i.id}}?(other) ? TRUE : FALSE
       end
 
       PROPER_{{i.id.upcase}}_METHOD = TMBSH.method("proper_{{i.id.upcase}}", 1) do
         other = args[1]
-        raise TypeError.new("Expected the argument to be of type Set") unless other.is_a?(Set)
+        raise ArgumentError.new("Expected the argument to be of type Set") unless other.is_a?(Set)
         this.proper_{{i.id}}?(other) ? TRUE : FALSE
       end
     {% end %}
@@ -1384,27 +1384,27 @@ module TMBSH
 
     AND_METHOD = TMBSH.method("and", 1) do
       other = args[1]
-      raise TypeError.new("Expected the argument to be a Set") unless other.is_a?(Set)
+      raise ArgumentError.new("Expected the argument to be a Set") unless other.is_a?(Set)
       this & other
     end
     OR_METHOD = TMBSH.method("or", 1) do
       other = args[1]
-      raise TypeError.new("Expected the argument to be a Set") unless other.is_a?(Set)
+      raise ArgumentError.new("Expected the argument to be a Set") unless other.is_a?(Set)
       this | other
     end
     XOR_METHOD = TMBSH.method("xor", 1) do
       other = args[1]
-      raise TypeError.new("Expected the argument to be a Set") unless other.is_a?(Set)
+      raise ArgumentError.new("Expected the argument to be a Set") unless other.is_a?(Set)
       this ^ other
     end
     UNION_METHOD = TMBSH.method("union", 1) do
       other = args[1]
-      raise TypeError.new("Expected the argument to be a Set") unless other.is_a?(Set)
+      raise ArgumentError.new("Expected the argument to be a Set") unless other.is_a?(Set)
       this + other
     end
     DIFFERENCE_METHOD = TMBSH.method("difference", 1) do
       other = args[1]
-      raise TypeError.new("Expected the argument to be a Set") unless other.is_a?(Set)
+      raise ArgumentError.new("Expected the argument to be a Set") unless other.is_a?(Set)
       this - other
     end
 
@@ -2012,11 +2012,11 @@ module TMBSH
     end
 
     def []=(key : Variant, value : Variant)
-      raise "Cannot ::Set on String"
+      raise TypeError.new("Cannot set on String")
     end
 
     def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
-      raise "Cannot call String"
+      raise TypeError.new("Cannot call String")
     end
 
     def ==(other : Variant)
@@ -2265,7 +2265,7 @@ module TMBSH
     end
 
     def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
-      raise "Cannot call Dictionary"
+      raise TypeError.new("Cannot call Dictionary")
     end
 
     def ==(other : Variant)
@@ -2342,7 +2342,7 @@ module TMBSH
     end
 
     def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
-      raise "Cannot call Null"
+      raise TypeError.new("Cannot call Null")
     end
 
     def to_s : ::String
@@ -2362,15 +2362,15 @@ module TMBSH
     end
 
     def [](key : Variant) : Variant
-      raise "Cannot access key on Null"
+      raise TypeError.new("Cannot access key on Null")
     end
 
     def []?(key : Variant) : Variant
-      raise "Cannot access key on Null"
+      raise TypeError.new("Cannot access key on Null")
     end
 
     def []=(key : Variant, value : Variant) : Variant
-      raise "Cannot access key on Null"
+      raise TypeError.new("Cannot access key on Null")
     end
 
     def ==(other : Variant)
@@ -2386,7 +2386,7 @@ module TMBSH
     end
 
     def iter_init(context : Interpreter::Context) : Iterator
-      raise "Cannot iterate over Null"
+      raise TypeError.new("Cannot iterate over Null")
     end
 
     def truthy? : ::Bool
@@ -2437,15 +2437,15 @@ module TMBSH
     end
 
     def [](key : Variant) : Variant
-      raise "Cannot do access on Bool"
+      raise TypeError.new("Cannot do access on Bool")
     end
 
     def []?(key : Variant) : Variant
-      raise "Cannot do access on Bool"
+      raise TypeError.new("Cannot do access on Bool")
     end
 
     def []=(key : Variant, value : Variant)
-      raise "Cannot ::Set on Bool"
+      raise TypeError.new("Cannot ::Set on Bool")
     end
 
     def to_s : ::String
@@ -2461,7 +2461,7 @@ module TMBSH
     end
 
     def to_a : ::Array(Variant)
-      raise "Cannot convert Bool to Array"
+      raise TypeError.new("Cannot convert Bool to Array")
     end
 
     def dup : Bool
@@ -2473,7 +2473,7 @@ module TMBSH
     end
 
     def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
-      raise "Cannot call a Bool"
+      raise TypeError.new("Cannot call a Bool")
     end
 
     def ==(other : Variant)
@@ -2489,7 +2489,7 @@ module TMBSH
     end
 
     def iter_init(context : Interpreter::Context) : Iterator
-      raise "Cannot iterate over Bool"
+      raise TypeError.new("Cannot iterate over Bool")
     end
 
     def truthy? : ::Bool
@@ -2539,15 +2539,15 @@ module TMBSH
     end
 
     def [](key : Variant) : Variant
-      raise "Cannot do access on Function"
+      raise TypeError.new("Cannot do access on Function")
     end
 
     def []?(key : Variant) : Variant
-      raise "Cannot do access on Function"
+      raise TypeError.new("Cannot do access on Function")
     end
 
     def []=(key : Variant, value : Variant)
-      raise "Cannot set on Function"
+      raise TypeError.new("Cannot set on Function")
     end
 
     def to_s : ::String
@@ -2563,15 +2563,15 @@ module TMBSH
     end
 
     def to_f64 : Float64
-      raise "Cannot convert Function to Float"
+      raise TypeError.new("Cannot convert Function to Float")
     end
 
     def to_i64 : Int64
-      raise "Cannot convert Function to Int"
+      raise TypeError.new("Cannot convert Function to Int")
     end
 
     def to_a : ::Array(Variant)
-      raise "Cannot convert Function to Array"
+      raise TypeError.new("Cannot convert Function to Array")
     end
 
     def dup : Function
@@ -2595,15 +2595,15 @@ module TMBSH
     end
 
     def to_json : ::String
-      raise "Cannot convert function to JSON"
+      raise TypeError.new("Cannot convert function to JSON")
     end
 
     def to_json(builder : JSON::Builder)
-      raise "Cannot convert function to JSON"
+      raise TypeError.new("Cannot convert function to JSON")
     end
 
     def iter_init(context : Interpreter::Context) : Iterator
-      raise "Cannot iterate over Function"
+      raise TypeError.new("Cannot iterate over Function")
     end
 
     def truthy? : ::Bool
@@ -2646,7 +2646,7 @@ module TMBSH
     end
 
     READ_METHOD = TMBSH.method("read", 1) do
-      raise "Expected one Array argument to read" unless args[1].is_a?(Array)
+      raise ArgumentError.new("Expected one Array argument to read") unless args[1].is_a?(Array)
       ary = args[1].as(Array)
       bytes = Bytes.new(ary.size)
       amount = this.@file.read(bytes)
@@ -2697,19 +2697,19 @@ module TMBSH
     end
 
     def hash : UInt64
-      raise "Do not use File as keys"
+      @file.hash
     end
 
     def [](key : Variant) : Variant
-      raise "Cannot do access on File"
+      raise TypeError.new("Cannot do access on File")
     end
 
     def []?(key : Variant) : Variant
-      raise "Cannot do access on File"
+      raise TypeError.new("Cannot do access on File")
     end
 
     def []=(key : Variant, value : Variant)
-      raise "Cannot set key on File"
+      raise TypeError.new("Cannot set key on File")
     end
 
     def to_s : ::String
@@ -2717,7 +2717,7 @@ module TMBSH
     end
 
     def to_f64 : Float64
-      raise "Cannot convert File to Float"
+      raise TypeError.new("Cannot convert File to Float")
     end
 
     def to_i64 : Int64
@@ -2725,19 +2725,19 @@ module TMBSH
     end
 
     def to_a : ::Array(Variant)
-      raise "Cannot convert File to Array"
+      raise TypeError.new("Cannot convert File to Array")
     end
 
     def dup : File
-      raise "Cannot dup File"
+      raise TypeError.new("Cannot dup File")
     end
 
     def clone : File
-      raise "Cannot clone File"
+      raise TypeError.new("Cannot clone File")
     end
 
     def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
-      raise "Cannot call File"
+      raise TypeError.new("Cannot call File")
     end
 
     def ==(other : Variant)
@@ -2745,11 +2745,11 @@ module TMBSH
     end
 
     def to_json : ::String
-      raise "Cannot convert File to JSON"
+      raise TypeError.new("Cannot convert File to JSON")
     end
 
     def to_json(builder : JSON::Builder)
-      raise "Cannot convert File to JSON"
+      raise TypeError.new("Cannot convert File to JSON")
     end
 
     def iter_init(context : Interpreter::Context) : Iterator
@@ -2812,7 +2812,7 @@ module TMBSH
     end
 
     def to_a : ::Array(Variant)
-      raise "Cannot convert Status to Array"
+      raise TypeError.new("Cannot convert Status to Array")
     end
 
     def dup : ExitStatus
@@ -2828,19 +2828,19 @@ module TMBSH
     end
 
     def [](key : Variant) : Variant
-      raise "Cannot do access on Status"
+      raise TypeError.new("Cannot do access on Status")
     end
 
     def []?(key : Variant) : Variant
-      raise "Cannot do access on Status"
+      raise TypeError.new("Cannot do access on Status")
     end
 
     def []=(key : Variant, value : Variant)
-      raise "Cannot ::Set on Status"
+      raise TypeError.new("Cannot set on Status")
     end
 
     def call(context : Interpreter::Context, args : ::Array(Variant)) : Variant
-      raise "Cannot call Status"
+      raise TypeError.new("Cannot call Status")
     end
 
     def ==(other : Variant)
@@ -2862,7 +2862,7 @@ module TMBSH
     end
 
     def iter_init(context : Interpreter::Context) : Iterator
-      raise "Cannot iterate over status"
+      raise TypeError.new("Cannot iterate over status")
     end
 
     def truthy? : ::Bool
@@ -2883,7 +2883,7 @@ module TMBSH
                elsif time.is_a?(String)
                 time.to_f64.seconds
                else
-                 raise TypeError.new("Expected Int or Float as first argument to await")
+                 raise ArgumentError.new("Expected Int or Float as first argument to await")
                end
         this.await(time)
       else
