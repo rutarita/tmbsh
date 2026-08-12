@@ -450,7 +450,7 @@ module TMBSH
             string_parts << {part, false}
           elsif part.is_a?(ValueNode)
             var = part.evaluate(context)
-            raise "Cannot interpolate non-string variable into a string" unless var.is_a?(String | Int | Float | Null)
+            # raise "Cannot interpolate non-string variable into a string" unless var.is_a?(String | Int | Float | Null)
             unless var.is_a?(Null)
               string_parts << {var.to_s, false}
             end
