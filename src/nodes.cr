@@ -502,12 +502,11 @@ module TMBSH
           @parts.each do |part|
             if part.is_a?(ValueNode)
               var = part.evaluate(context)
-              if var.is_a?(String) || var.is_a?(Float | Int)
-                io << var.to_s
-              elsif var.is_a?(Null)
+              # if var.is_a?(String) || var.is_a?(Float | Int)
+              if var.is_a?(Null)
                 # nothing
               else
-                raise "Cannot interpolate non-string variable into a string" unless var.is_a?(String)
+                io << var.to_s
               end
             else
               io << part.to_s
