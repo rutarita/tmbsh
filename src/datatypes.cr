@@ -2372,7 +2372,7 @@ module TMBSH
     end
 
     def to_s : ::String
-      "Null"
+      ""
     end
 
     def to_f64 : Float64
