@@ -299,6 +299,10 @@ module TMBSH
         break if token.kind.curly_bracket_close?
         key = parse_value
         skip_whitespaces_and_newlines
+        if token.kind.equal?
+          next_token
+          skip_whitespaces_and_newlines
+        end
         val = parse_value
         dict << {key, val}
         skip_whitespaces_and_newlines
