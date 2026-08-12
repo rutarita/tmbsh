@@ -2,14 +2,15 @@ require "./interpreter"
 require "./readline"
 
 module TMBSH
-  macro tl_function(&block)
+  macro tl_function(name, argument_amount, &block)
 # top level function duhh
     Function.new(->(context : Interpreter::Context, args : ::Array(Variant)) : Variant? {
+    TMBSH.require_arguments({{name}}, {{argument_amount}})
       {{ block.body }}
     })
   end
 
-  PRINT_FUNCTION = TMBSH.tl_function do
+  PRINT_FUNCTION = TMBSH.tl_function("print", 0..) do
     args.each do |arg|
       print arg.to_s, ' '
     end
@@ -89,8 +90,7 @@ module TMBSH
     end
   end
 
-  ENUMERATE_FUNCTION = TMBSH.tl_function do
-    raise "Expected at one argument and optional offset argument" if args.empty? || args.size > 2
+  ENUMERATE_FUNCTION = TMBSH.tl_function("enumerate", 1..) do
     offset = args[1]?
     if offset
       offset = offset.to_i64
@@ -100,12 +100,11 @@ module TMBSH
     EnumerateIterator.new(context, args[0], offset)
   end
 
-  ZIP_FUNCTION = TMBSH.tl_function do
+  ZIP_FUNCTION = TMBSH.tl_function("zip", 1..) do
     ZipIterator.new(context, args.to_a)
   end
 
-  DIR_FUNCTION = TMBSH.tl_function do
-    raise "Expected one argument to inspect" unless args.size == 1
+  DIR_FUNCTION = TMBSH.tl_function("dir", 0) do
     var = args[0]
     methods = var.get_method_list
     Array.new(methods.map do |item|
@@ -113,44 +112,43 @@ module TMBSH
     end)
   end
 
-  READLINE_FUNCTION = TMBSH.tl_function do
-    raise "readline only requires one optional arguments" if args.size > 1
+  READLINE_FUNCTION = TMBSH.tl_function("readline", 0..1) do
     prompt = args[0]? ? args[0].to_s : ""
     str = ReadLine.readline(prompt)
     String.new(str) if str
   end
 
-  RAND_FUNCTION = TMBSH.tl_function do
+  RAND_FUNCTION = TMBSH.tl_function("rand", 0..2) do
     num = case args.size
       when 0 then rand(Int64::MIN..Int64::MAX)
       when 1 then rand(args[0].to_i64)
       when 2 then rand(args[0].to_i64..args[1].to_i64)
-      else raise "Expected 2 arguments at most"
+      else raise "Unreachable"
       end
     Float.new(num.to_f64)
   end
 
-  RANDI_FUNCTION = TMBSH.tl_function do
+  RANDI_FUNCTION = TMBSH.tl_function("randi", 0..2) do
       num = case args.size
       when 0 then rand(Int64::MIN..Int64::MAX)
       when 1 then rand(args[0].to_i64)
       when 2 then rand(args[0].to_i64..args[1].to_i64)
-      else raise "Expected 2 arguments at most"
+      else raise "Unreachable"
       end
     Int.new(num.to_f64)
   end
 
-  RANDIE_FUNCTION = TMBSH.tl_function do
+  RANDIE_FUNCTION = TMBSH.tl_function("randie", 0..2) do
     num = case args.size
       when 0 then rand(Int64::MIN..Int64::MAX)
       when 1 then rand(args[0].to_i64)
       when 2 then rand(args[0].to_i64...args[1].to_i64)
-      else raise "Expected 2 arguments at most"
+      else raise "Unreachable"
       end
     Int.new(num.to_f64)
   end
 
-  MAX_FUNCTION = TMBSH.tl_function do
+  MAX_FUNCTION = TMBSH.tl_function("max", 0..) do
     return NULL if args.size == 0
     best = args[0]
     best_val = best.to_f64
@@ -162,10 +160,10 @@ module TMBSH
       best_val = val
       end
     end
-    best || raise "Unexpected error"
+    best
   end
 
-  MIN_FUNCTION = TMBSH.tl_function do
+  MIN_FUNCTION = TMBSH.tl_function("min", 0..) do
     return NULL if args.size == 0
     best = args[0]
     best_val = best.to_f64
@@ -176,22 +174,21 @@ module TMBSH
       best_val = val
       end
     end
-    best || raise "Unexpected error"
+    best
   end
 
-  TIME_FUNCTION = TMBSH.tl_function do
+  TIME_FUNCTION = TMBSH.tl_function("time", 0) do
     Float.new(Time.utc.to_unix_f)
   end
 
-  TYPE_OF_FUNCTION = TMBSH.tl_function do
-    raise "Expected one argument to typeof" unless args.size == 1
+  TYPE_OF_FUNCTION = TMBSH.tl_function("typeof", 1) do
     var = args[0]
     class_name = var.class.to_s
     typename = class_name.lchop("TMBSH::")
     String.new(typename)
   end
 
-  VARS_FUNCTION = TMBSH.tl_function do
+  VARS_FUNCTION = TMBSH.tl_function("vars", 0) do
     map = {} of Variant => Variant
     context.current_variable_stack.@vars.last.each do |k,v|
       map[String.new(k)] = v

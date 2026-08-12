@@ -3,20 +3,61 @@ require "./exceptions"
 require "./context"
 
 module TMBSH
-  macro abstract_method(name, &body)
+  macro require_arguments(func_name, amount, is_method = false)
+    {% if amount.is_a? NumberLiteral %}
+    raise ArgumentError.new("{{ is_method ? "method".id : "function".id }} {{func_name.id}} requires {{amount}} argument{{"s".id unless amount == 1}}") unless args.size == {{amount + (is_method ? 1 : 0)}}
+    {% elsif amount.is_a? RangeLiteral && amount.begin.is_a?(NilLiteral) && amount.end.is_a?(NumberLiteral) %}
+    raise ArgumentError.new("{{ is_method ? "method".id : "function".id }} {{func_name.id}} requires 0..{{".".id if amount.excludes_end?}}{{amount.end}} arguments") if \
+    args.size {{amount.excludes_end? ? ">=".id : ">".id}} {{amount.end + (is_method ? 1 : 0)}}
+    {% elsif amount.is_a? RangeLiteral && amount.begin.is_a?(NumberLiteral) && amount.end.is_a?(NumberLiteral)%}
+    raise ArgumentError.new("{{ is_method ? "method".id : "function".id }} {{func_name.id}} requires {{amount.begin}}..{{".".id if amount.excludes_end?}}{{amount.end}} arguments") if \
+    args.size < {{amount.begin + (is_method ? 1 : 0)}} || args.size {{amount.excludes_end? ? ">=".id : ">".id}} {{amount.end + (is_method ? 1 : 0)}}
+    {% elsif amount.is_a? RangeLiteral && amount.begin.is_a?(NumberLiteral) && amount.end.is_a?(NilLiteral)%}
+    {% unless amount.begin == (is_method ? 1 : 0)%}
+    raise ArgumentError.new("{{ is_method ? "method".id : "function".id }} {{func_name.id}} requires at least {{amount.begin}} argument{{"s".id unless amount.end == 1}}") if \
+    args.size < {{amount.begin + (is_method ? 1 : 0)}}
+    {% end %}
+    {% end %}
+  end
+
+  macro abstract_method(name, arg_amount, &body)
     Function.new(self.to_s.lchop("TMBSH::"), {{name}}, ->(context : Interpreter::Context, args : ::Array(Variant)) : Variant? {
+    TMBSH.require_arguments({{name}}, {{arg_amount}}, true)
     this = args[0]
     {{body.body}}
     })
   end
 
-  macro method(name, &body)
+  macro method(name, arg_amount, &body)
     Function.new(self.to_s.lchop("TMBSH::"), {{name}}, ->(context : Interpreter::Context, args : ::Array(Variant)) : Variant? {
+    TMBSH.require_arguments({{name}}, {{arg_amount}}, true)
     this = args[0] # .as(self)
     raise "Wrong self" unless this.is_a?(self)
     {{body.body}}
     })
   end
+
+  macro generate_methods(methods)
+    {
+      {% for k, v in methods %}
+        {{k}} => {{v}},
+      {% end %}
+      "truthy?" => TRUTHY_METHOD,
+      "is_a?"   => IS_A_METHOD,
+      "eq"      => EQ_METHOD,
+      "neq"     => NEQ_METHOD,
+      "or_else"  => ORELSE_METHOD,
+      "if"      => IF_METHOD,
+      "if_else"  => IF_ELSE_METHOD,
+      "dup"     => DUP_METHOD,
+      "clone"   => CLONE_METHOD,
+      "str"     => STR_METHOD,
+      "iter"    => ITER_METHOD,
+      "to_json" => TO_JSON_METHOD,
+    } of ::String => Function
+  end
+
+
 
   protected def self.variant_from_json(json : JSON::Any) : Variant
     raw = json.raw
@@ -56,36 +97,39 @@ module TMBSH
     @@methods : Hash(::String, Function) = {} of ::String => Function
     @@unstable_methods : ::Set(::String) = ::Set(::String).new # means methods that can vary in result even if the value is consistent
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
-    ITER_METHOD = TMBSH.abstract_method("iter") do
+    ITER_METHOD = TMBSH.abstract_method("iter", 0) do
       this.iter_init(context)
     end
 
-    CLONE_METHOD = TMBSH.abstract_method("clone") do
+    CLONE_METHOD = TMBSH.abstract_method("clone", 0) do
       this.clone
     end
 
-    DUP_METHOD = TMBSH.abstract_method("dup") do
+    DUP_METHOD = TMBSH.abstract_method("dup", 0) do
       this.dup
     end
 
-    IS_A_METHOD = TMBSH.abstract_method("is_a") do
+    IS_A_METHOD = TMBSH.abstract_method("is_a", 1) do
       this.variant_type?(args[1]?.to_s) ? TRUE : FALSE
     end
 
-    EQ_METHOD = TMBSH.abstract_method("eq") do
-      this == (args[1]? || NULL) ? TRUE : FALSE
+    EQ_METHOD = TMBSH.abstract_method("eq", 1) do
+      this == (args[1] || NULL) ? TRUE : FALSE
     end
 
-    NEQ_METHOD = TMBSH.abstract_method("neq") do
-      this == (args[1]? || NULL) ? FALSE : TRUE
+    NEQ_METHOD = TMBSH.abstract_method("neq", 1) do
+      this == (args[1] || NULL) ? FALSE : TRUE
     end
 
-    STR_METHOD = TMBSH.abstract_method("str") do
+    STR_METHOD = TMBSH.abstract_method("str", 0) do
       String.new(this.to_s)
     end
 
-    ORELSE_METHOD = TMBSH.abstract_method("orelse") do
-      raise "orelse method requires one argument" unless args.size == 2
+    TO_JSON_METHOD = TMBSH.abstract_method("to_json", 0) do
+      String.new(this.to_json)
+    end
+
+    ORELSE_METHOD = TMBSH.abstract_method("or_else", 1) do
       if this.is_a?(Null)
         args[1]
       else
@@ -93,8 +137,23 @@ module TMBSH
       end
     end
 
-    TRUTHY_METHOD = TMBSH.abstract_method("truthy?") do
-      raise "truthy? method expects no arguments" unless args.size == 1
+    IF_METHOD = TMBSH.abstract_method("if", 1) do
+      if args[1].truthy?
+        this
+      else
+        NULL
+      end
+    end
+
+    IF_ELSE_METHOD = TMBSH.abstract_method("ifelse", 2) do
+      if args[1].truthy?
+        this
+      else
+        args[2]
+      end
+    end
+
+    TRUTHY_METHOD = TMBSH.abstract_method("truthy?", 0) do
       this.truthy? ? TRUE : FALSE
     end
 
@@ -239,44 +298,36 @@ module TMBSH
       end
     end
 
-    NEXT_METHOD = TMBSH.method("next") do
+    NEXT_METHOD = TMBSH.method("next", 0) do
       this.iter_next(context) || NULL
     end
-    TO_A_METHOD = TMBSH.method("to_a") do
+    TO_A_METHOD = TMBSH.method("to_a", 0) do
       this.to_sharr(context)
     end
     {% for itertype in ["map", "select", "reject"] %}
-      {{itertype.id.upcase}}_METHOD = TMBSH.method({{itertype}}) do
-        func = args[1]?
-        raise "Expected 1 argument that is a function" unless args.size == 2 && func.is_a?(Function)
+      {{itertype.id.upcase}}_METHOD = TMBSH.method({{itertype}}, 1) do
+        func = args[1]
+        raise ArgumentError.new("Expected first argument to be a Function") unless func.is_a?(Function)
         this.{{itertype.id}}(context, func)
       end
     {% end %}
 
-    FOLD_METHOD = TMBSH.method("fold") do
-      into = args[1]?
-      func = args[2]?
-      raise "Expected 1 collector argument and second Function argument" unless into && func.is_a?(Function)
+    FOLD_METHOD = TMBSH.method("fold", 2) do
+      into = args[1]
+      func = args[2]
+      raise ArgumentError.new("Expected second argument to be a Function") unless func.is_a?(Function)
       this.fold(context, into, func)
     end
 
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
-    @@methods = {
+    @@methods = TMBSH.generate_methods({
       "next"   => NEXT_METHOD,
       "to_a"   => TO_A_METHOD,
-      "eq"     => EQ_METHOD,
-      "neq"    => NEQ_METHOD,
-      "str"    => STR_METHOD,
       "map"    => MAP_METHOD,
       "select" => SELECT_METHOD,
       "reject" => REJECT_METHOD,
       "fold"   => FOLD_METHOD,
-
-      "orelse"  => ORELSE_METHOD,
-      "truthy?" => TRUTHY_METHOD,
-      "dup"     => DUP_METHOD,
-      "clone"   => CLONE_METHOD,
-    } of ::String => Function
+    })
 
     @@type_aliases = ::Set{"iter", "iterator"}
 
@@ -405,7 +456,7 @@ module TMBSH
 
     @value : {{num_type}}
 
-    ADD_METHOD = TMBSH.method("add") do
+    ADD_METHOD = TMBSH.method("add", 0..) do
       num = this.@value
       args.each(within: 1..) do |arg|
         num += arg.{{conversion}}
@@ -413,7 +464,7 @@ module TMBSH
       {{name}}.new(num)
     end
 
-    SUB_METHOD = TMBSH.method("sub") do
+    SUB_METHOD = TMBSH.method("sub", 0..) do
       num = this.@value
       args.each(within: 1..) do |arg|
         num -= arg.{{conversion}}
@@ -421,7 +472,7 @@ module TMBSH
       {{name}}.new(num)
     end
 
-    MUL_METHOD = TMBSH.method("mul") do
+    MUL_METHOD = TMBSH.method("mul", 0..) do
       num = this.@value
       args.each(within: 1..) do |arg|
         num *= arg.{{conversion}}
@@ -429,7 +480,7 @@ module TMBSH
       {{name}}.new(num)
     end
 
-    DIV_METHOD = TMBSH.method("div") do
+    DIV_METHOD = TMBSH.method("div", 0..) do
       num = this.@value
       args.each(within: 1..) do |arg|
         num /= arg.{{conversion}}
@@ -437,14 +488,14 @@ module TMBSH
       {{name}}.new(num)
     end
 
-    AND_METHOD = TMBSH.method("and") do
+    AND_METHOD = TMBSH.method("and", 0..) do
       res = this.@value.to_i64
       args.each(within: 1..) do |arg|
         res &= arg.to_i
       end
       Int.new(res)
     end
-    OR_METHOD = TMBSH.method("or") do
+    OR_METHOD = TMBSH.method("or", 0..) do
       res = this.@value.to_i64
       args.each(within: 1..) do |arg|
         res |= arg.to_i
@@ -452,7 +503,7 @@ module TMBSH
       Int.new(res)
     end
 
-    XOR_METHOD = TMBSH.method("xor") do
+    XOR_METHOD = TMBSH.method("xor", 0..) do
       res = this.@value.to_i64
       args.each(within: 1..) do |arg|
         res ^= arg.to_i
@@ -460,14 +511,14 @@ module TMBSH
       Int.new(res)
     end
 
-    FDIV_METHOD = TMBSH.method("fdiv") do
+    FDIV_METHOD = TMBSH.method("fdiv", 0..) do
       num = this.@value
       args.each(within: 1..) do |arg|
         num //= arg.{{conversion}}
       end
       {{name}}.new(num)
     end
-    POW_METHOD = TMBSH.method("pow") do
+    POW_METHOD = TMBSH.method("pow", 0..) do
       num = this.@value
       args.each(within: 1..) do |arg|
         num **= arg.{{conversion}}
@@ -477,70 +528,65 @@ module TMBSH
     # IS_A_METHOD = TMBSH.method("is_a") do
     #   this.variant_type?(args[1]?.to_s) ? TRUE : FALSE
     # end
-    FLOAT_METHOD = TMBSH.method("float") do
+    FLOAT_METHOD = TMBSH.method("float", 0) do
       Float.new(this.to_f64)
     end
-    INT_METHOD = TMBSH.method("int") do
+    INT_METHOD = TMBSH.method("int", 0) do
       Int.new(this.to_i64)
     end
-    TO_METHOD = TMBSH.method("to") do
+    TO_METHOD = TMBSH.method("to", 0..1) do
       if dest = args[1]?
         this.to(dest, args[2]?)
       end
     end
 
-    TOE_METHOD = TMBSH.method("toe") do
+    TOE_METHOD = TMBSH.method("toe", 0..1) do
       if dest = args[1]?
         this.toe(dest, args[2]?)
       end
     end
 
-    GT_METHOD = TMBSH.method("gt") do
-      raise ArgumentError.new("Expected one argument") unless args.size == 2
+    GT_METHOD = TMBSH.method("gt", 1) do
       this.@value > args[1].{{conversion}} ? TRUE : FALSE
     end
 
-    LT_METHOD = TMBSH.method("lt") do
-      raise ArgumentError.new("Expected one argument") unless args.size == 2
+    LT_METHOD = TMBSH.method("lt", 1) do
       this.@value < args[1].{{conversion}} ? TRUE : FALSE
     end
 
-    GTE_METHOD = TMBSH.method("gte") do
-      raise ArgumentError.new("Expected one argument") unless args.size == 2
+    GTE_METHOD = TMBSH.method("gte", 1) do
       this.@value >= args[1].{{conversion}} ? TRUE : FALSE
     end
 
-    LTE_METHOD = TMBSH.method("lte") do
-      raise ArgumentError.new("Expected one argument") unless args.size == 2
+    LTE_METHOD = TMBSH.method("lte", 1) do
       this.@value <= args[1].{{conversion}} ? TRUE : FALSE
     end
 
-    RANGE_METHOD = TMBSH.method("range") do
+    RANGE_METHOD = TMBSH.method("range", 0..1) do
       Range.new(this.@value.to_i64, args[1]?.try &.to_i64, false)
     end
 
-    ERANGE_METHOD = TMBSH.method("erange") do
+    ERANGE_METHOD = TMBSH.method("erange", 0..1) do
       Range.new(this.@value.to_i64, args[1]?.try &.to_i64, true)
     end
 
-    HUMANIZE_METHOD = TMBSH.method("humanize") do
+    HUMANIZE_METHOD = TMBSH.method("humanize", 0) do
       String.new(this.@value.humanize)
     end
 
     {% for i in ["round", "ceil", "floor", "abs", "abs2"] %}
-      {{i.id.upcase}}_METHOD = TMBSH.method("{{i.id.upcase}}") do
+      {{i.id.upcase}}_METHOD = TMBSH.method("{{i.id}}", 0) do
         {{name}}.new(this.@value.{{i.id}})
       end
     {% end %}
 
-    SIGNIFICANT_METHOD = TMBSH.method("significant") do
-      raise ArgumentError.new("Expected 1-2 arguments to significant") if args.size < 2 || args.size > 3
+    SIGNIFICANT_METHOD = TMBSH.method("significant", 1..2) do
       digits = args[1].to_i64
       base = args[2]? ? args[2].to_i64 : 10
       {{name}}.new(this.@value.significant(digits, base))
     end
 
-    STR_METHOD = TMBSH.method("str") do
+    STR_METHOD = TMBSH.method("str", 0..1) do
       {% if num_type.id[0..2] == "Int" %}
         base = 10
         if arg = args[1]?
@@ -552,7 +598,7 @@ module TMBSH
       {% end %}
     end
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
-@@methods = {
+@@methods = TMBSH.generate_methods({
       "add"         => ADD_METHOD,
       "sub"         => SUB_METHOD,
       "mul"         => MUL_METHOD,
@@ -572,7 +618,6 @@ module TMBSH
       "lt"          => LT_METHOD,
       "gte"         => GTE_METHOD,
       "lte"         => LTE_METHOD,
-      "iter"        => ITER_METHOD,
       "str"         => STR_METHOD,
       "humanize"    => HUMANIZE_METHOD,
       "hum"         => HUMANIZE_METHOD,
@@ -584,15 +629,7 @@ module TMBSH
       "er"          => ERANGE_METHOD,
       "to"          => TO_METHOD,
       "toe"         => TOE_METHOD,
-
-      "is_a?"       => IS_A_METHOD,
-      "eq"         => EQ_METHOD,
-      "eq"          => EQ_METHOD,
-      "orelse"      => ORELSE_METHOD,
-      "truthy?" => TRUTHY_METHOD,
-      "dup"   => DUP_METHOD,
-      "clone" => CLONE_METHOD,
-    } of ::String => Function
+    })
 
     @@type_aliases = ::Set{"{{name.id.downcase}}", "{{num_type.id.downcase}}"}
 
@@ -757,11 +794,11 @@ module TMBSH
 
     @value : AnyRange
 
-    TO_A_METHOD = TMBSH.method("to_a") do
+    TO_A_METHOD = TMBSH.method("to_a", 0) do
       this.to_sharr
     end
 
-    BEGIN_METHOD = TMBSH.method("begin") do
+    BEGIN_METHOD = TMBSH.method("begin", 0) do
       val = this.@value.begin
       if val
         Float.new(val.to_f64)
@@ -770,7 +807,7 @@ module TMBSH
       end
     end
 
-    END_METHOD = TMBSH.method("end") do
+    END_METHOD = TMBSH.method("end", 0) do
       val = this.@value.end
       if val
         Float.new(val.to_f64)
@@ -780,21 +817,11 @@ module TMBSH
     end
 
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
-    @@methods = {
+    @@methods = TMBSH.generate_methods({
       "begin" => BEGIN_METHOD,
       "end"   => END_METHOD,
       "to_a"  => TO_A_METHOD,
-      "iter"  => ITER_METHOD,
-      "str"   => STR_METHOD,
-
-      "truthy?" => TRUTHY_METHOD,
-      "is_a?"   => IS_A_METHOD,
-      "eq"      => EQ_METHOD,
-      "neq"     => NEQ_METHOD,
-      "orelse"  => ORELSE_METHOD,
-      "dup"     => DUP_METHOD,
-      "clone"   => CLONE_METHOD,
-    } of ::String => Function
+    })
 
     @@type_aliases = ::Set{"range"}
 
@@ -916,26 +943,26 @@ module TMBSH
     end
 
     @value : ::Array(Variant)
-    SIZE_METHOD = TMBSH.method("size") do
+    SIZE_METHOD = TMBSH.method("size", 0) do
       Int.new(this.@value.size)
     end
-    APPEND_METHOD = TMBSH.method("append") do
+    APPEND_METHOD = TMBSH.method("append", 1..) do
       args.each(within: 1..) do |item|
         this << item
       end
       this
     end
 
-    POP_METHOD = TMBSH.method("pop") do
+    POP_METHOD = TMBSH.method("pop", 0) do
       this.@value.pop?
     end
 
-    EMPTY_METHOD = TMBSH.method("empty") do
+    EMPTY_METHOD = TMBSH.method("empty?", 0) do
       this.@value.empty? ? TRUE : FALSE
     end
 
-    INDEX_METHOD = TMBSH.method("index") do
-      obj = args[1]? || NULL
+    INDEX_METHOD = TMBSH.method("index", 1..2) do
+      obj = args[1]
       if offset = args[2]?
         offset = offset.to_i
         this.@value.index(obj, offset)
@@ -944,13 +971,13 @@ module TMBSH
       end
     end
 
-    DELETE_METHOD = TMBSH.method("delete") do
+    DELETE_METHOD = TMBSH.method("delete", 1..) do
       args.each(within: 1..) do |item|
         this.delete item
       end
       this
     end
-    CONCAT_METHOD = TMBSH.method("concat") do
+    CONCAT_METHOD = TMBSH.method("concat", 1..) do
       copy = this.dup
       args.each(within: 1..) do |item|
         arr = item.to_a
@@ -958,36 +985,31 @@ module TMBSH
       end
       copy
     end
-    REVERSE_METHOD = TMBSH.method("reverse") do
+    REVERSE_METHOD = TMBSH.method("reverse", 0) do
       Array.new(this.@value.reverse)
     end
-    CLEAR_METHOD = TMBSH.method("clear") do
+    CLEAR_METHOD = TMBSH.method("clear", 0) do
       this.@value.clear
       this
     end
-    TO_JSON_METHOD = TMBSH.method("to_json") do
-      String.new(this.to_json)
-    end
 
     {% for i in ["sum", "sort", "sort_num"] %}
-    {{i.id.upcase}}_METHOD = TMBSH.method("{{i.id.upcase}}") do
-      raise ArgumentError.new("Expected no arguments") unless args.size == 1
+    {{i.id.upcase}}_METHOD = TMBSH.method("{{i.id}}", 0) do
       this.{{i.id}}
     end
     {% end %}
 
-    SHIFT_METHOD = TMBSH.method("shift") do
+    SHIFT_METHOD = TMBSH.method("shift", 0) do
       this.@value.shift
     end
-    UNSHIFT_METHOD = TMBSH.method("unshift") do
+    UNSHIFT_METHOD = TMBSH.method("unshift", 1..) do
       args.each(within: 1..) do |arg|
         this.@value.unshift arg
       end
       this
     end
 
-    FETCH_METHOD = TMBSH.method("fetch") do
-      raise ArgumentError.new("Expected one or two arguments") if args.size > 3 || args.size < 2
+    FETCH_METHOD = TMBSH.method("fetch", 1..2) do
       key = args[1]
       if alt = args[2]?
         this[key]? || alt
@@ -997,18 +1019,18 @@ module TMBSH
     end
 
     {% for name in ["map", "select", "reject"] %}
-        {{name.id.upcase}}_METHOD = TMBSH.method("{{name.id.upcase}}") do
-          fn = args[1]?
+        {{name.id.upcase}}_METHOD = TMBSH.method("{{name.id}}", 1) do
+          fn = args[1]
           raise ArgumentError.new("First argument to {{name.id}} must be a function") unless fn.is_a?(Function)
           this.{{name.id}}(context, fn)
         end
-        {{name.id.upcase}}_IN_PLACE_METHOD = TMBSH.method("{{name.id.upcase}}_in_place") do
-          fn = args[1]?
+        {{name.id.upcase}}_IN_PLACE_METHOD = TMBSH.method("{{name.id}}_in_place", 1) do
+          fn = args[1]
           raise ArgumentError.new("First argument to {{name.id}} must be a function") unless fn.is_a?(Function)
           this.{{name.id}}!(context, fn)
         end
       {% end %}
-    REDUCE_METHOD = TMBSH.method("reduce") do
+    REDUCE_METHOD = TMBSH.method("reduce", 1..2) do
       if args.size == 3
         initial_value = args[1]
         fn = args[2]
@@ -1018,12 +1040,10 @@ module TMBSH
         fn = args[1]
         raise ArgumentError.new("Expected argument 1 to be a Function") unless fn.is_a?(Function)
         this.reduce(context, fn)
-      else
-        raise ArgumentError.new("Expected 1 or 2 arguments (optional initial value and callback)") unless args.size == 3
       end
     end
 
-    FIND_METHOD = TMBSH.method("find") do
+    FIND_METHOD = TMBSH.method("find", 1..2) do
       if args.size == 3
         if_none = args[2]
         fn = args[1]
@@ -1033,41 +1053,36 @@ module TMBSH
         fn = args[1]
         raise ArgumentError.new("Expected argument 1 to be a Function") unless fn.is_a?(Function)
         this.find(context, fn)
-      else
-        raise ArgumentError.new("Expected 1 or 2 arguments (optional initial value and callback)") unless args.size == 3
       end
     end
-    RESIZE_METHOD = TMBSH.method("resize") do
+    RESIZE_METHOD = TMBSH.method("resize", 1) do
       num = args[1]
-      raise ArgumentError.new("Expected only one argument to resize") unless args.size == 2
-      raise ArgumentError.new("Only argument to resize must be a number") unless num.is_a?(Float | Int | String)
       new_size = num.to_i
       this.resize(new_size)
       this
     end
 
-    JOIN_METHOD = TMBSH.method("join") do
+    JOIN_METHOD = TMBSH.method("join", 0..1) do
       sep = args[1]?.try &.to_s || ""
       String.new(this.join(sep))
     end
 
-    INCLUDES_METHOD = TMBSH.method("includes") do
-      raise ArgumentError.new("Expected only one argument to includes") unless args.size == 2
+    INCLUDES_METHOD = TMBSH.method("includes", 1) do
       this.@value.includes?(args[1]) ? TRUE : FALSE
     end
 
-    PARTITION_METHOD = TMBSH.method("partition") do
-      fn = args[1]?
-      raise ArgumentError.new("Expected first and only argument to be a Function") unless fn.is_a?(Function)
+    PARTITION_METHOD = TMBSH.method("partition", 1) do
+      fn = args[1]
+      raise ArgumentError.new("Expected first argument to be a Function") unless fn.is_a?(Function)
       this.partition(context, fn)
     end
 
-    DECODE_METHOD = TMBSH.method("decode") do
+    DECODE_METHOD = TMBSH.method("decode", 0) do
       this.decode
     end
 
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
-    @@methods = {
+    @@methods = TMBSH.generate_methods({
       "size"      => SIZE_METHOD,
       "append"    => APPEND_METHOD,
       "fetch"     => FETCH_METHOD,
@@ -1079,7 +1094,6 @@ module TMBSH
       "join"      => JOIN_METHOD,
       "reverse"   => REVERSE_METHOD,
       "clear"     => CLEAR_METHOD,
-      "str"       => STR_METHOD,
       "sum"       => SUM_METHOD,
       "map"       => MAP_METHOD,
       "map!"      => MAP_IN_PLACE_METHOD,
@@ -1096,21 +1110,13 @@ module TMBSH
       "includes?" => INCLUDES_METHOD,
       "has"       => INCLUDES_METHOD,
       "has?"      => INCLUDES_METHOD,
+      "empty?"    => EMPTY_METHOD,
 
       "decode" => DECODE_METHOD,
 
-      "to_json" => TO_JSON_METHOD,
-
-      "is_a?"    => IS_A_METHOD,
-      "iter"     => ITER_METHOD,
-      "truthy?"  => TRUTHY_METHOD,
-      "eq"       => EQ_METHOD,
       "sort"     => SORT_METHOD,
       "sort_num" => SORT_NUM_METHOD,
-      "orelse"   => ORELSE_METHOD,
-      "dup"      => DUP_METHOD,
-      "clone"    => CLONE_METHOD,
-    } of ::String => Function
+    })
 
     @@type_aliases = ::Set{"arr", "array", "list"}
 
@@ -1345,7 +1351,7 @@ module TMBSH
   class Set < Variant
     @value : ::Set(Variant)
 
-    ADD_METHOD = TMBSH.method("add") do
+    ADD_METHOD = TMBSH.method("add", 1..) do
       args.each(within: 1..) do |item|
         this << item
       end
@@ -1353,15 +1359,13 @@ module TMBSH
     end
 
     {% for i in ["subset_of", "superset_of"] %}
-      {{i.id.upcase}}_METHOD = TMBSH.method("{{i.id.upcase}}") do
-        raise ArgumentError.new("Expected one argument") unless args.size == 2
+      {{i.id.upcase}}_METHOD = TMBSH.method("{{i.id.upcase}}", 1) do
         other = args[1]
         raise TypeError.new("Expected the argument to be of type Set") unless other.is_a?(Set)
         this.{{i.id}}?(other) ? TRUE : FALSE
       end
 
-      PROPER_{{i.id.upcase}}_METHOD = TMBSH.method("proper_{{i.id.upcase}}") do
-        raise ArgumentError.new("Expected one argument") unless args.size == 2
+      PROPER_{{i.id.upcase}}_METHOD = TMBSH.method("proper_{{i.id.upcase}}", 1) do
         other = args[1]
         raise TypeError.new("Expected the argument to be of type Set") unless other.is_a?(Set)
         this.proper_{{i.id}}?(other) ? TRUE : FALSE
@@ -1387,52 +1391,46 @@ module TMBSH
     #   this.proper_superset_of?(args[1])
     # end
 
-    AND_METHOD = TMBSH.method("and") do
-      raise ArgumentError.new("Expected one argument") unless args.size == 2
+    AND_METHOD = TMBSH.method("and", 1) do
       other = args[1]
       raise TypeError.new("Expected the argument to be a Set") unless other.is_a?(Set)
       this & other
     end
-    OR_METHOD = TMBSH.method("or") do
-      raise ArgumentError.new("Expected one argument") unless args.size == 2
+    OR_METHOD = TMBSH.method("or", 1) do
       other = args[1]
       raise TypeError.new("Expected the argument to be a Set") unless other.is_a?(Set)
       this | other
     end
-    XOR_METHOD = TMBSH.method("xor") do
-      raise ArgumentError.new("Expected one argument") unless args.size == 2
+    XOR_METHOD = TMBSH.method("xor", 1) do
       other = args[1]
       raise TypeError.new("Expected the argument to be a Set") unless other.is_a?(Set)
       this ^ other
     end
-    UNION_METHOD = TMBSH.method("union") do
-      raise ArgumentError.new("Expected one argument") unless args.size == 2
+    UNION_METHOD = TMBSH.method("union", 1) do
       other = args[1]
       raise TypeError.new("Expected the argument to be a Set") unless other.is_a?(Set)
       this + other
     end
-    DIFFERENCE_METHOD = TMBSH.method("difference") do
-      raise ArgumentError.new("Expected one argument") unless args.size == 2
+    DIFFERENCE_METHOD = TMBSH.method("difference", 1) do
       other = args[1]
       raise TypeError.new("Expected the argument to be a Set") unless other.is_a?(Set)
       this - other
     end
 
-    TO_A_METHOD = TMBSH.method("to_a") do
+    TO_A_METHOD = TMBSH.method("to_a", 0) do
       this.to_sharr
     end
 
-    INCLUDES_METHOD = TMBSH.method("includes") do
-      raise ArgumentError.new("Expected one argument") unless args.size == 2
+    INCLUDES_METHOD = TMBSH.method("includes", 1) do
       this.includes?(args[1])
     end
 
-    CLEAR_METHOD = TMBSH.method("clear") do
+    CLEAR_METHOD = TMBSH.method("clear", 0) do
       this.clear
       this
     end
 
-    DELETE_METHOD = TMBSH.method("delete") do
+    DELETE_METHOD = TMBSH.method("delete", 1..) do
       args.each(within: 1..) do |item|
         this.delete item
       end
@@ -1440,7 +1438,7 @@ module TMBSH
     end
 
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
-    @@methods = {
+    @@methods = TMBSH.generate_methods({
       "add"                 => ADD_METHOD,
       "delete"              => DELETE_METHOD,
       "del"                 => DELETE_METHOD,
@@ -1459,15 +1457,7 @@ module TMBSH
       "proper_superset_of?" => PROPER_SUPERSET_OF_METHOD,
       "to_a"                => TO_A_METHOD,
       "clear"               => CLEAR_METHOD,
-
-      "is_a?"   => IS_A_METHOD,
-      "eq"      => EQ_METHOD,
-      "str"     => STR_METHOD,
-      "orelse"  => ORELSE_METHOD,
-      "truthy?" => TRUTHY_METHOD,
-      "dup"     => DUP_METHOD,
-      "clone"   => CLONE_METHOD,
-    } of ::String => Function
+    })
 
     @@type_aliases = ::Set{"set", "hash"}
 
@@ -1702,36 +1692,35 @@ module TMBSH
       end
     end
 
-    SIZE_METHOD = TMBSH.method("size") do
+    SIZE_METHOD = TMBSH.method("size", 0) do
       Int.new(this.@value.size)
     end
-    STRIP_METHOD = TMBSH.method("strip") do
+    STRIP_METHOD = TMBSH.method("strip", 0..1) do
       if v = args[1]?
         String.new(this.@value.strip(v.to_s))
       else
         String.new(this.@value.strip)
       end
     end
-    RSTRIP_METHOD = TMBSH.method("rstrip") do
+    RSTRIP_METHOD = TMBSH.method("rstrip", 0..1) do
       if v = args[1]?
         String.new(this.@value.rstrip(v.to_s))
       else
         String.new(this.@value.rstrip)
       end
     end
-    LSTRIP_METHOD = TMBSH.method("lstrip") do
+    LSTRIP_METHOD = TMBSH.method("lstrip", 0..1) do
       if v = args[1]?
         String.new(this.@value.lstrip(v.to_s))
       else
         String.new(this.@value.lstrip)
       end
     end
-    SPLIT_METHOD = TMBSH.method("split") do
-      arr = nil
-      if sep = args[1]?
-        arr = this.@value.split(sep.to_s)
+    SPLIT_METHOD = TMBSH.method("split", 0..1) do
+      arr = if sep = args[1]?
+        this.@value.split(sep.to_s)
       else
-        arr = this.@value.split
+        this.@value.split
       end
       Array.new(
         arr.map do |item|
@@ -1739,34 +1728,31 @@ module TMBSH
         end
       )
     end
-    CONCAT_METHOD = TMBSH.method("concat") do
+    CONCAT_METHOD = TMBSH.method("concat", 1..) do
       res = this
       args.each(within: 1..) do |item|
         res = res.concat(item)
       end
       res
     end
-    TO_JSON_METHOD = TMBSH.method("to_json") do
-      String.new(this.to_json)
-    end
 
-    FROM_JSON_METHOD = TMBSH.method("from_json") do
+    FROM_JSON_METHOD = TMBSH.method("from_json", 0) do
       this.from_json
     end
 
-    ENTRIES_METHOD = TMBSH.method("entries") do
+    ENTRIES_METHOD = TMBSH.method("entries", 0) do
       this.entries
     end
 
-    ITERDIR_METHOD = TMBSH.method("iterdir") do
+    ITERDIR_METHOD = TMBSH.method("iterdir", 0) do
       this.iterdir
     end
 
-    REVERSE_METHOD = TMBSH.method("reverse") do
+    REVERSE_METHOD = TMBSH.method("reverse", 0) do
       String.new(this.@value.reverse)
     end
 
-    READ_METHOD = TMBSH.method("read") do
+    READ_METHOD = TMBSH.method("read", 0) do
       begin
         contents = ::File.read(this.@value)
         String.new(contents)
@@ -1775,11 +1761,11 @@ module TMBSH
       end
     end
 
-    EXISTS_METHOD = TMBSH.method("exists") do
+    EXISTS_METHOD = TMBSH.method("exists", 0) do
       ::File.exists?(this.@value) ? TRUE : FALSE
     end
 
-    CHOMP_METHOD = TMBSH.method("chomp") do
+    CHOMP_METHOD = TMBSH.method("chomp", 0..1) do
       if suf = args[1]?
         String.new(this.@value.chomp(suf.to_s))
       else
@@ -1787,7 +1773,7 @@ module TMBSH
       end
     end
 
-    LCHOP_METHOD = TMBSH.method("lchop") do
+    LCHOP_METHOD = TMBSH.method("lchop", 0..1) do
       if suf = args[1]?
         String.new(this.@value.lchop(suf.to_s))
       else
@@ -1795,7 +1781,7 @@ module TMBSH
       end
     end
 
-    COUNT_METHOD = TMBSH.method("count") do
+    COUNT_METHOD = TMBSH.method("count", 1..) do
       res = 0
       args.each(within: 1..) do |arg|
         target = arg.to_s
@@ -1806,31 +1792,33 @@ module TMBSH
       )
     end
 
-    ENDS_WITH_METHOD = TMBSH.method("ends_with") do
-      res = false
-      args.each(within: 1..) do |arg|
-        target = arg.to_s
-        if this.@value.ends_with?(target)
-          res = true
-          break
-        end
-      end
-      res ? TRUE : FALSE
+    ENDS_WITH_METHOD = TMBSH.method("ends_with", 1) do
+      # res = false
+      # args.each(within: 1..) do |arg|
+      #   target = arg.to_s
+      #   if this.@value.ends_with?(target)
+      #     res = true
+      #     break
+      #   end
+      # end
+      # res ? TRUE : FALSE
+      this.@value.ends_with?(args[1].to_s) ? TRUE : FALSE
     end
 
-    STARTS_WITH_METHOD = TMBSH.method("starts_with") do
-      res = false
-      args.each(within: 1..) do |arg|
-        target = arg.to_s
-        if this.@value.starts_with?(target)
-          res = true
-          break
-        end
-      end
-      res ? TRUE : FALSE
+    STARTS_WITH_METHOD = TMBSH.method("starts_with", 1) do
+      # res = false
+      # args.each(within: 1..) do |arg|
+      #   target = arg.to_s
+      #   if this.@value.starts_with?(target)
+      #     res = true
+      #     break
+      #   end
+      # end
+      # res ? TRUE : FALSE
+      this.@value.starts_with?(args[1].to_s) ? TRUE : FALSE
     end
 
-    INDEX_METHOD = TMBSH.method("index") do
+    INDEX_METHOD = TMBSH.method("index", 1..2) do
       if args.size == 2
         search = args[1].to_s
         idx = this.@value.index(search)
@@ -1840,35 +1828,30 @@ module TMBSH
         offset = args[2].to_i
         idx = this.@value.index(search, offset)
         idx ? Float.new(idx.to_f64) : NULL
-      else
-        raise TypeError.new("Expected 1 or 2 arguments")
       end
     end
 
     {% for i in ["downcase", "upcase", "titleize", "camelcase", "underscore", "capitalize"] %}
-      {{i.id.upcase}}_METHOD = TMBSH.method("{{i.id.upcase}}") do
-        raise ArgumentError.new("Expected no arguments") unless args.size == 1
+      {{i.id.upcase}}_METHOD = TMBSH.method("{{i.id.upcase}}", 0) do
         String.new(this.@value.{{i.id}})
       end
     {% end %}
 
-    PARTITION_METHOD = TMBSH.method("partition") do
-      raise ArgumentError.new("Expected one argument to partition") unless args[1]?
+    PARTITION_METHOD = TMBSH.method("partition", 1) do
       left, sep, right = this.@value.partition(args[1].to_s)
       Array.new(
         [String.new(left), String.new(sep), String.new(right)] of Variant
       )
     end
 
-    RPARTITION_METHOD = TMBSH.method("rpartition") do
-      raise ArgumentError.new("Expected one argument to rpartition") unless args[1]?
+    RPARTITION_METHOD = TMBSH.method("rpartition", 1) do
       left, sep, right = this.@value.rpartition(args[1].to_s)
       Array.new(
         [String.new(left), String.new(sep), String.new(right)] of Variant
       )
     end
 
-    JOIN_METHOD = TMBSH.method("join") do
+    JOIN_METHOD = TMBSH.method("join", 1..) do
       path = Path[this.@value]
       args.each(within: 1..) do |arg|
         path = path / arg.to_s
@@ -1876,58 +1859,56 @@ module TMBSH
       String.new(path.to_s)
     end
 
-    CHARS_METHOD = TMBSH.method("chars") do
+    CHARS_METHOD = TMBSH.method("chars", 0) do
       arr = this.@value.chars.map do |char|
         String.new(char.to_s).as(Variant)
       end
       Array.new(arr)
     end
 
-    IS_FILE_METHOD = TMBSH.method("is_file") do
+    IS_FILE_METHOD = TMBSH.method("is_file", 0) do
       ::File.file?(this.@value) ? TRUE : FALSE
     end
-    IS_DIR_METHOD = TMBSH.method("is_dir") do
+    IS_DIR_METHOD = TMBSH.method("is_dir", 0) do
       ::Dir.exists?(this.@value) ? TRUE : FALSE
     end
 
-    WALK_METHOD = TMBSH.method("walk") do
+    WALK_METHOD = TMBSH.method("walk", 0) do
       this.walk
     end
 
-    ABSOLUTE_METHOD = TMBSH.method("absolute") do
+    ABSOLUTE_METHOD = TMBSH.method("absolute", 0) do
       this.absolute
     end
 
-    INT_METHOD = TMBSH.method("int") do
+    INT_METHOD = TMBSH.method("int", 0..1) do
       base = (args[1]?.try &.to_i64) || 10
       if res = this.@value.to_i64?(base)
         Int.new(res)
       end
     end
 
-    FLOAT_METHOD = TMBSH.method("float") do
+    FLOAT_METHOD = TMBSH.method("float", 0) do
       if res = this.@value.to_f64?
         Float.new(res)
       end
     end
 
-    STAT_METHOD = TMBSH.method("stat") do
-      raise ArgumentError.new("Expected no arguments") unless args.size == 1
+    STAT_METHOD = TMBSH.method("stat", 0) do
       this.stat
     end
 
-    ENCODE_METHOD = TMBSH.method("encode") do
+    ENCODE_METHOD = TMBSH.method("encode", 0) do
       this.encode
     end
 
-    OPEN_METHOD = TMBSH.method("open") do
-      raise ArgumentError.new("Expected 0..1 arguments") if args.size > 2
+    OPEN_METHOD = TMBSH.method("open", 0..1) do
       modes = args[1]?.try &.to_s || "r"
       File.new(this.@value, modes)
     end
 
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
-    @@methods = {
+    @@methods = TMBSH.generate_methods({
       # string operations
       "size"         => SIZE_METHOD,
       "concat"       => CONCAT_METHOD,
@@ -1975,17 +1956,8 @@ module TMBSH
       "exists?"  => EXISTS_METHOD,
       "iterdir"  => ITERDIR_METHOD,
 
-      "to_json"   => TO_JSON_METHOD,
       "from_json" => FROM_JSON_METHOD,
-
-      "is_a?"   => IS_A_METHOD,
-      "iter"    => ITER_METHOD,
-      "eq"      => EQ_METHOD,
-      "orelse"  => ORELSE_METHOD,
-      "truthy?" => TRUTHY_METHOD,
-      "dup"     => DUP_METHOD,
-      "clone"   => CLONE_METHOD,
-    } of ::String => Function
+    })
 
     @@type_aliases = ::Set{"str", "string", "text"}
 
@@ -2170,23 +2142,19 @@ module TMBSH
 
     @value : Hash(Variant, Variant)
 
-    KEYS_METHOD = TMBSH.method("keys") do
+    KEYS_METHOD = TMBSH.method("keys", 0) do
       Array.new(this.@value.keys)
     end
 
-    VALUES_METHOD = TMBSH.method("values") do
+    VALUES_METHOD = TMBSH.method("values", 0) do
       Array.new(this.@value.values)
     end
 
-    TO_JSON_METHOD = TMBSH.method("to_json") do
-      String.new(this.to_json)
-    end
-
-    INVERT_METHOD = TMBSH.method("invert") do
+    INVERT_METHOD = TMBSH.method("invert", 0) do
       Dictionary.new(this.@value.dup.invert)
     end
 
-    PAIRS_METHOD = TMBSH.method("pairs") do
+    PAIRS_METHOD = TMBSH.method("pairs", 0..3) do
       connection = args[1]? || ""
       prefix = args[2]? || ""
       postfix = args[3]? || ""
@@ -2201,8 +2169,7 @@ module TMBSH
       )
     end
 
-    FETCH_METHOD = TMBSH.method("fetch") do
-      raise "Expected one or two arguments" if args.size > 3 || args.size < 2
+    FETCH_METHOD = TMBSH.method("fetch", 1..2) do
       key = args[1]
       if alt = args[2]?
         this[key]? || alt
@@ -2211,37 +2178,24 @@ module TMBSH
       end
     end
 
-    HAS_KEY_METHOD = TMBSH.method("has_key") do
-      raise "Expected one argument" unless args.size == 1
+    HAS_KEY_METHOD = TMBSH.method("has_key", 1) do
       this.@value.has_key?(args[1]) ? TRUE : FALSE
     end
 
-    HAS_VALUE_METHOD = TMBSH.method("has_value") do
-      raise "Expected one argument" unless args.size == 1
+    HAS_VALUE_METHOD = TMBSH.method("has_value", 1) do
       this.@value.has_value?(args[1]) ? TRUE : FALSE
     end
 
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
-    @@methods = {
+    @@methods = TMBSH.generate_methods({
       "fetch"      => FETCH_METHOD,
       "keys"       => KEYS_METHOD,
       "values"     => VALUES_METHOD,
       "has_key?"   => HAS_KEY_METHOD,
       "has_value?" => HAS_VALUE_METHOD,
-      "str"        => STR_METHOD,
-      "to_json"    => TO_JSON_METHOD,
       "invert"     => INVERT_METHOD,
       "pairs"      => PAIRS_METHOD,
-      "iter"       => ITER_METHOD,
-
-      "is_a?"   => IS_A_METHOD,
-      "eq"      => EQ_METHOD,
-      "orelse"  => ORELSE_METHOD,
-      "truthy?" => TRUTHY_METHOD,
-      "dup"     => DUP_METHOD,
-      "clone"   => CLONE_METHOD,
-    } of ::String => Function
-
+    })
     @@type_aliases = ::Set{"dict", "hash", "dictionary"}
 
     def initialize
@@ -2373,29 +2327,20 @@ module TMBSH
   NULL = Null.new
 
   class Null < Variant
-    RANGE_METHOD = TMBSH.method("range") do
+    RANGE_METHOD = TMBSH.method("range", 0..1) do
       Range.new(nil, args[1]?.try &.to_i64, false)
     end
 
-    ERANGE_METHOD = TMBSH.method("erange") do
+    ERANGE_METHOD = TMBSH.method("erange", 0..1) do
       Range.new(nil, args[1]?.try &.to_i64, true)
     end
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
-    @@methods = {
+    @@methods = TMBSH.generate_methods({
       "range"  => RANGE_METHOD,
       "erange" => ERANGE_METHOD,
       "r"      => RANGE_METHOD,
       "er"     => ERANGE_METHOD,
-
-      "is_a?"   => IS_A_METHOD,
-      "eq"      => EQ_METHOD,
-      "neq"     => NEQ_METHOD,
-      "str"     => STR_METHOD,
-      "orelse"  => ORELSE_METHOD,
-      "truthy?" => TRUTHY_METHOD,
-      "dup"     => DUP_METHOD,
-      "clone"   => CLONE_METHOD,
-    } of ::String => Function
+    })
 
     @@type_aliases = ::Set{"null", "nil", "none"}
 
@@ -2481,7 +2426,7 @@ module TMBSH
   class Bool < Variant
     @value : ::Bool
 
-    OR_METHOD = TMBSH.method("or") do
+    OR_METHOD = TMBSH.method("or", 0..1) do
       if this.truthy?
         args[1]? || NULL
       else
@@ -2489,7 +2434,7 @@ module TMBSH
       end
     end
 
-    AND_METHOD = TMBSH.method("and") do
+    AND_METHOD = TMBSH.method("and", 0..1) do
       if this.truthy?
         this
       else
@@ -2497,24 +2442,15 @@ module TMBSH
       end
     end
 
-    STR_METHOD = TMBSH.method("str") do
-      String.new(this.@value ? "True" : "False")
-    end
+    # STR_METHOD = TMBSH.method("str", 0) do
+    #   String.new(this.@value ? "True" : "False")
+    # end
 
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
-    @@methods = {
+    @@methods = TMBSH.generate_methods({
       "or"  => OR_METHOD,
       "and" => AND_METHOD,
-      "str" => STR_METHOD,
-
-      "is_a?"   => IS_A_METHOD,
-      "eq"      => EQ_METHOD,
-      "neq"     => NEQ_METHOD,
-      "orelse"  => ORELSE_METHOD,
-      "truthy?" => TRUTHY_METHOD,
-      "dup"     => DUP_METHOD,
-      "clone"   => CLONE_METHOD,
-    } of ::String => Function
+    })
 
     @@type_aliases = ::Set{"bool", "boolean", "the universal"}
 
@@ -2539,7 +2475,7 @@ module TMBSH
     end
 
     def to_s : ::String
-      @value ? "0" : "1"
+      @value ? "true" : "false"
     end
 
     def to_f64 : Float64
@@ -2593,43 +2529,34 @@ module TMBSH
     property parent_class : ::String?
     @binded_args : ::Array(Variant)
 
-    BIND_METHOD = TMBSH.method("bind") do
+    BIND_METHOD = TMBSH.method("bind", 1..) do
       binded = args.to_a[1..]
       this.bind(binded)
     end
 
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
-    @@methods = {
-      "is_a?" => IS_A_METHOD,
-      "eq"    => EQ_METHOD,
-      "neq"   => NEQ_METHOD,
-      "str"   => STR_METHOD,
+    @@methods = TMBSH.generate_methods({
       "bind"  => BIND_METHOD,
-
-      "orelse"  => ORELSE_METHOD,
-      "truthy?" => TRUTHY_METHOD,
-      "dup"     => DUP_METHOD,
-      "clone"   => CLONE_METHOD,
-    } of ::String => Function
-
+    })
     @@type_aliases = ::Set{"func", "function"}
 
     def initialize
       @binded_args = [] of Variant
     end
 
-    def initialize(proc : Proc(Interpreter::Context, ::Array(Variant), Variant?)?, binded_args : ::Array(Variant))
-      @proc = proc
+    def initialize(@proc : Proc(Interpreter::Context, ::Array(Variant), Variant?)?, binded_args : ::Array(Variant))
       @binded_args = binded_args
     end
 
-    def initialize(proc : Proc(Interpreter::Context, ::Array(Variant), Variant?)?)
-      @proc = proc
+    def initialize(@proc : Proc(Interpreter::Context, ::Array(Variant), Variant?)?)
       @binded_args = [] of Variant
     end
 
-    def initialize(@parent_class : ::String, @name : ::String, proc : Proc(Interpreter::Context, ::Array(Variant), Variant?)?)
-      @proc = proc
+    def initialize(@parent_class : ::String, @name : ::String, @proc : Proc(Interpreter::Context, ::Array(Variant), Variant?)?)
+      @binded_args = [] of Variant
+    end
+
+    def initialize(@name : ::String, @proc : Proc(Interpreter::Context, ::Array(Variant), Variant?)?)
       @binded_args = [] of Variant
     end
 
@@ -2731,21 +2658,21 @@ module TMBSH
     #   this
     # end
 
-    PRINT_METHOD = TMBSH.method("print") do
+    PRINT_METHOD = TMBSH.method("print", 1..) do
       args.each(within: 1..) do |arg|
         this.@file.print(arg.to_s)
       end
       this
     end
-    PUTS_METHOD = TMBSH.method("puts") do
+    PUTS_METHOD = TMBSH.method("puts", 1..) do
       args.each(within: 1..) do |arg|
         this.@file.puts(arg.to_s)
       end
       this
     end
 
-    READ_METHOD = TMBSH.method("read") do
-      raise "Expected one Array argument to read" unless args.size == 2 && args[1].is_a?(Array)
+    READ_METHOD = TMBSH.method("read", 1) do
+      raise "Expected one Array argument to read" unless args[1].is_a?(Array)
       ary = args[1].as(Array)
       bytes = Bytes.new(ary.size)
       amount = this.@file.read(bytes)
@@ -2755,31 +2682,27 @@ module TMBSH
       ary
     end
 
-    GETS_TO_END_METHOD = TMBSH.method("gets_to_end") do
-      raise "Expected no arguments to gets_to_end" unless args.size == 1
+    GETS_TO_END_METHOD = TMBSH.method("gets_to_end", 0) do
       String.new(this.@file.gets_to_end)
     end
 
-    GETS_METHOD = TMBSH.method("gets") do
+    GETS_METHOD = TMBSH.method("gets", 0..1) do
       if args.size == 1
         val = this.@file.gets
         val ? String.new(val) : NULL
       elsif args.size == 2
         val = this.@file.gets(args[1].to_s)
         val ? String.new(val) : NULL
-      else
-        raise "Expected 0..1 arguments to gets"
       end
     end
 
-    CLOSE_METHOD = TMBSH.method("close") do
-      raise "Expected no arguments to close" unless args.size == 1
+    CLOSE_METHOD = TMBSH.method("close", 0) do
       this.@file.close
       NULL
     end
 
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
-    @@methods = {
+    @@methods = TMBSH.generate_methods({
 
       # "write"  => WRITE_METHOD,
       "print"       => PRINT_METHOD,
@@ -2790,17 +2713,7 @@ module TMBSH
       "gets_to_end" => GETS_TO_END_METHOD,
       "read_fully"  => GETS_TO_END_METHOD,
       "close"       => CLOSE_METHOD,
-
-      "str" => STR_METHOD,
-
-      "is_a?"   => IS_A_METHOD,
-      "eq"      => EQ_METHOD,
-      "neq"     => NEQ_METHOD,
-      "orelse"  => ORELSE_METHOD,
-      "truthy?" => TRUTHY_METHOD,
-      "dup"     => DUP_METHOD,
-      "clone"   => CLONE_METHOD,
-    } of ::String => Function
+    })
 
     @@type_aliases = ::Set{"file", "descriptor"}
 
@@ -2883,37 +2796,27 @@ module TMBSH
     @exit_code : Int32?
     @status : Process::Status?
     property status
-    FLOAT_METHOD = TMBSH.method("float") do
+    FLOAT_METHOD = TMBSH.method("float", 0) do
       code = this.@exit_code
       code ? Float.new(code) : NULL
     end
-    INT_METHOD = TMBSH.method("int") do
+    INT_METHOD = TMBSH.method("int", 0) do
       code = this.@exit_code
       code ? Float.new(code) : NULL
     end
 
-    DESCRIPTION_METHOD = TMBSH.method("description") do
-      raise ArgumentError.new("Expected no argument for description") unless args.size == 1
+    DESCRIPTION_METHOD = TMBSH.method("description", 0) do
       status = this.status
       status ? String.new(status.description) : NULL
     end
 
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
-    @@methods = {
+    @@methods = TMBSH.generate_methods({
       "float" => FLOAT_METHOD,
       "int"   => INT_METHOD,
-      "str"   => STR_METHOD,
 
       "description" => DESCRIPTION_METHOD,
-
-      "is_a?"   => IS_A_METHOD,
-      "eq"      => EQ_METHOD,
-      "neq"     => NEQ_METHOD,
-      "orelse"  => ORELSE_METHOD,
-      "truthy?" => TRUTHY_METHOD,
-      "dup"     => DUP_METHOD,
-      "clone"   => CLONE_METHOD,
-    } of ::String => Function
+    })
 
     @@type_aliases = ::Set{"exit_status", "status"}
 
@@ -2997,13 +2900,14 @@ module TMBSH
     # @fiber : Fiber
     @channel : Channel(Variant)
 
-    AWAIT_METHOD = TMBSH.method("await") do
-      raise ArgumentError.new("Expected 0..1 arguments for await") unless args.size < 2
+    AWAIT_METHOD = TMBSH.method("await", 0..1) do
       if time = args[1]?
         time = if time.is_a?(Int)
                  time.@value.seconds
                elsif time.is_a?(Float)
                  time.@value.seconds
+               elsif time.is_a?(String)
+                time.to_f64.seconds
                else
                  raise TypeError.new("Expected Int or Float as first argument to await")
                end
@@ -3013,22 +2917,15 @@ module TMBSH
       end
     end
 
-    AWAITED_METHOD = TMBSH.method("awaited?") do
+    AWAITED_METHOD = TMBSH.method("awaited?", 0) do
       this.@channel.closed? ? TRUE : FALSE
     end
 
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
-    @@methods = {
+    @@methods = TMBSH.generate_methods({
       "await"    => AWAIT_METHOD,
       "awaited?" => AWAITED_METHOD,
-      "is_a?"    => IS_A_METHOD,
-      "eq"       => EQ_METHOD,
-      "neq"      => NEQ_METHOD,
-      "orelse"   => ORELSE_METHOD,
-      "truthy?"  => TRUTHY_METHOD,
-      "dup"      => DUP_METHOD,
-      "clone"    => CLONE_METHOD,
-    } of ::String => Function
+    })
 
     @@type_aliases = ::Set{"promise"}
 
