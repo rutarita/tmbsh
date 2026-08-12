@@ -191,6 +191,9 @@ module TMBSH
 
     abstract def to_json : ::String
     abstract def to_json(builder : JSON::Builder)
+    def to_json_object_key
+      to_s
+    end
     abstract def hash : UInt64
     abstract def clone
     abstract def dup
@@ -694,11 +697,11 @@ module TMBSH
     end
 
     def to_json : ::String
-      to_s
+      @value.to_json
     end
 
     def to_json(builder : JSON::Builder)
-      builder.number(@value)
+      @value.to_json(builder)
     end
 
     def to(destination : Variant, step : Variant?) : Array
@@ -1187,23 +1190,11 @@ module TMBSH
     end
 
     def to_json : ::String
-      ::String.build do |io|
-        io << '['
-        @value[0...-1].each do |item|
-          io << item.to_json
-          io << ','
-        end
-        io << @value[-1]?.try &.to_json
-        io << ']'
-      end
+      @value.to_json
     end
 
     def to_json(builder : JSON::Builder)
-      builder.array do
-        @value.each do |item|
-          item.to_json(builder)
-        end
-      end
+      @value.to_json(builder)
     end
 
     def to_string_array : ::Array(::String)
@@ -2042,7 +2033,7 @@ module TMBSH
     end
 
     def to_json(builder : JSON::Builder)
-      builder.string(@value)
+      @value.to_json(builder)
     end
 
     def from_json : Variant
@@ -2282,28 +2273,11 @@ module TMBSH
     end
 
     def to_json : ::String
-      ::String.build do |io|
-        io << '{'
-        @value.keys[0...-1].each do |k|
-          io << k.to_json
-          io << ':'
-          io << @value[k].to_json
-          io << ','
-        end
-        k = @value.keys[-1]
-        io << k.to_json
-        io << ':'
-        io << @value[k].to_json
-        io << '}'
-      end
+      @value.to_json
     end
 
     def to_json(builder : JSON::Builder)
-      builder.object do
-        @value.each do |k, v|
-          builder.field(k.to_shs, v)
-        end
-      end
+      @value.to_json(builder)
     end
 
     def iter_init(context : Interpreter::Context) : Iterator
