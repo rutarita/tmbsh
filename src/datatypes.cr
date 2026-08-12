@@ -2038,7 +2038,7 @@ module TMBSH
     end
 
     def to_json : ::String
-      "\"#{@value}\""
+      @value.to_json
     end
 
     def to_json(builder : JSON::Builder)
