@@ -2050,8 +2050,8 @@ module TMBSH
       TMBSH.variant_from_json(json)
     end
 
-    def entries : Array
-      raise "Directory #{@value} doesn't exist" unless Dir.exists?(@value)
+    def entries : Array?
+      return unless Dir.exists?(@value)
       Array.new(
         Dir.children(@value).map do |item|
           String.new(item).as(Variant)
