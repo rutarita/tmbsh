@@ -50,20 +50,47 @@ module TMBSH
         current_variable_stack.exit_scope
       end
 
-      def shadow_variable(name : ::String, value : Variant)
+      # def shadow_variable(name : ::String, value : Variant)
+      #   current_variable_stack.shadow_variable(name, value)
+      # end
+      #
+      # def set_variable(name : ::String, value : Variant)
+      #   current_variable_stack[name] = value
+      # end
+      #
+      # def get_variable(name : ::String)
+      #   variable_stacks.reverse_each do |stack|
+      #     val = stack[name]
+      #     return val unless val.is_a?(Null)
+      #   end
+      #   NULL
+      # end
+      def shadow_variable(name : StringName, value : Variant)
         current_variable_stack.shadow_variable(name, value)
       end
 
-      def set_variable(name : ::String, value : Variant)
+      def set_variable(name : StringName, value : Variant)
         current_variable_stack[name] = value
       end
 
-      def get_variable(name : ::String)
+      def get_variable(name : StringName)
         variable_stacks.reverse_each do |stack|
           val = stack[name]
           return val unless val.is_a?(Null)
         end
         NULL
+      end
+
+      def shadow_variable(name : ::String, value : Variant)
+        shadow_variable(StringName.new(name), value)
+      end
+
+      def set_variable(name : ::String, value : Variant)
+       set_variable(StringName.new(name), value)
+      end
+
+      def get_variable(name : ::String)
+        get_variable(StringName.new(name))
       end
 
       # def enter_scope
@@ -86,7 +113,7 @@ module TMBSH
       #   @variable_stack[name]
       # end
       #
-      def export_variable(name : ::String)
+      def export_variable(name : StringName)
         variable_stacks.reverse_each do |stack|
           val = stack[name]
           unless val.is_a?(Null)
@@ -94,6 +121,10 @@ module TMBSH
             return
           end
         end
+      end
+
+      def export_variable(name : ::String)
+        export_variable(StringName.new(name))
       end
 
       # def export_variable(name : ::String)

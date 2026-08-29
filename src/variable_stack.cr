@@ -1,20 +1,25 @@
 require "./datatypes"
     class TMBSH::Interpreter::VariableStack
-      @vars : ::Array(::Hash(::String, Variant))
+      # @vars : ::Array(::Hash(StringName, Variant))
+      @vars : ::Array(::Hash(StringName, Variant))
       getter vars
-      @global : ::Hash(::String, Variant) = {} of ::String => Variant
-      @constants : ::Hash(::String, Variant) = TOP_LEVEL_VALUES
+      # @global : ::Hash(StringName, Variant) = {} of StringName => Variant
+      @global : ::Hash(StringName, Variant) = {} of StringName => Variant
+      # @constants : ::Hash(StringName, Variant) = TOP_LEVEL_VALUES
+      @constants : ::Hash(StringName, Variant) = TOP_LEVEL_VALUES
       @strict : ::Bool = false
       property strict
 
-      # @scope_cache : ::Hash(::String, Int32) = {} of ::String => Int32
+      UNDERSCORE_STRING_NAME = StringName.new("_")
+
+      # @scope_cache : ::Hash(StringName, Int32) = {} of StringName => Int32
 
       def initialize
         @vars = [@global]
       end
 
       def enter_scope : Nil
-        @vars << {} of ::String => Variant
+        @vars << {} of StringName => Variant
       end
 
       def exit_scope : Nil
@@ -36,7 +41,7 @@ require "./datatypes"
         @vars[-1]
       end
 
-      def find_scope(of_var : ::String) : ::Hash(::String, Variant)?
+      def find_scope(of_var : StringName) : ::Hash(StringName, Variant)?
         # if scope = @scope_cache[of_var]?
         #   return scope
         # end
@@ -48,21 +53,21 @@ require "./datatypes"
         end
       end
 
-      def set_constant(name : ::String, value : Variant)
+      def set_constant(name : StringName, value : Variant)
         @constants[name] = value
       end
 
-      def shadow_variable(name : ::String, value : Variant) : Nil
-        return if name == "_"
+      def shadow_variable(name : StringName, value : Variant) : Nil
+        return if name == UNDERSCORE_STRING_NAME
         # @scope_cache[name] = current_scope
         @vars.last[name] = value
       end
 
-      def [](name : ::String) : Variant
+      def [](name : StringName) : Variant
         if val = @constants[name]?
           return val
         end
-        if str = ENV[name]?
+        if str = ENV[name.to_s]?
           return String.new(str)
         end
         if scope = find_scope(name)
@@ -73,20 +78,20 @@ require "./datatypes"
         end
       end
 
-      private def set_env(name : ::String, value : Variant) : Nil
+      private def set_env(name : StringName, value : Variant) : Nil
           # return if val.is_a?(Null)
           if value.is_a?(Array)
-            ENV[name] = value.join(":")
+            ENV[name.to_s] = value.join(":")
           elsif value.is_a?(Null)
-            ENV.delete(name)
+            ENV.delete(name.to_s)
           else
-            ENV[name] = value.to_s
+            ENV[name.to_s] = value.to_s
           end
       end
 
-      def []=(name : ::String, value : Variant) : Nil
-        return if name == "_"
-        if ENV[name]?
+      def []=(name : StringName, value : Variant) : Nil
+        return if name == UNDERSCORE_STRING_NAME
+        if ENV[name.to_s]?
           set_env(name, value)
           return
         end
@@ -98,12 +103,12 @@ require "./datatypes"
         end
       end
 
-      def export(name : ::String)
+      def export(name : StringName)
         val = self[name]
         set_env(name, val)
       end
 
-      def make_variable_global(name : ::String)
+      def make_variable_global(name : StringName)
         if scope = find_scope
           if val = scope.delete(name)
             @global[name] = val

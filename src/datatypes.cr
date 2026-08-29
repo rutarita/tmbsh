@@ -1,7 +1,7 @@
 require "json"
 require "./exceptions"
 require "./context"
-
+require "./string_name"
 module TMBSH
   macro require_arguments(func_name, amount, is_method = false)
     {% if amount.is_a? NumberLiteral %}
@@ -37,24 +37,43 @@ module TMBSH
     })
   end
 
+  # macro generate_methods(methods)
+  #   {
+  #     {% for k, v in methods %}
+  #       {{k}} => {{v}},
+  #     {% end %}
+  #     "truthy?" => TRUTHY_METHOD,
+  #     "is_a?"   => IS_A_METHOD,
+  #     "eq"      => EQ_METHOD,
+  #     "neq"     => NEQ_METHOD,
+  #     "or_else"  => ORELSE_METHOD,
+  #     "if"      => IF_METHOD,
+  #     "if_else"  => IF_ELSE_METHOD,
+  #     "dup"     => DUP_METHOD,
+  #     "clone"   => CLONE_METHOD,
+  #     "str"     => STR_METHOD,
+  #     "iter"    => ITER_METHOD,
+  #     "to_json" => TO_JSON_METHOD,
+  #   } of ::String => Function
+  # end
   macro generate_methods(methods)
     {
       {% for k, v in methods %}
-        {{k}} => {{v}},
+        StringName.new({{k}}) => {{v}},
       {% end %}
-      "truthy?" => TRUTHY_METHOD,
-      "is_a?"   => IS_A_METHOD,
-      "eq"      => EQ_METHOD,
-      "neq"     => NEQ_METHOD,
-      "or_else"  => ORELSE_METHOD,
-      "if"      => IF_METHOD,
-      "if_else"  => IF_ELSE_METHOD,
-      "dup"     => DUP_METHOD,
-      "clone"   => CLONE_METHOD,
-      "str"     => STR_METHOD,
-      "iter"    => ITER_METHOD,
-      "to_json" => TO_JSON_METHOD,
-    } of ::String => Function
+      StringName.new("truthy?") => TRUTHY_METHOD,
+      StringName.new("is_a?")   => IS_A_METHOD,
+      StringName.new("eq")      => EQ_METHOD,
+      StringName.new("neq")     => NEQ_METHOD,
+      StringName.new("or_else")  => ORELSE_METHOD,
+      StringName.new("if")      => IF_METHOD,
+      StringName.new("if_else")  => IF_ELSE_METHOD,
+      StringName.new("dup")     => DUP_METHOD,
+      StringName.new("clone")   => CLONE_METHOD,
+      StringName.new("str")     => STR_METHOD,
+      StringName.new("iter")    => ITER_METHOD,
+      StringName.new("to_json") => TO_JSON_METHOD,
+    } of StringName => Function
   end
 
 
@@ -94,7 +113,8 @@ module TMBSH
     end
 
   abstract class Variant
-    @@methods : Hash(::String, Function) = {} of ::String => Function
+    @@methods : Hash(StringName, Function) = {} of StringName => Function
+    # @@methods : Hash(::String, Function) = {} of ::String => Function
     @@unstable_methods : ::Set(::String) = ::Set(::String).new # means methods that can vary in result even if the value is consistent
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     ITER_METHOD = TMBSH.abstract_method("iter", 0) do
@@ -215,6 +235,10 @@ module TMBSH
     # {% end %}
 
     def get_method(name : ::String)
+      get_method(StringName.new(name))
+    end
+
+    def get_method(name : StringName)
       if method = @@methods[name]?
         # {% if flag?(:method_hash_caching) %}
         @@methods_hash_cache[name.hash] = method
@@ -240,7 +264,7 @@ module TMBSH
     end
 
     def get_method_list : ::Array(::String)
-      @@methods.keys
+      @@methods.keys.map &.to_s
     end
   end
 

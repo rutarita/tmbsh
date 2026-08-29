@@ -557,6 +557,7 @@ module TMBSH
             next_token
             skip_whitespaces_and_newlines
             next_command = parse_command_with_assignments(*stop_tokens)
+            command.fork_command = true if next_command.fork_command
             command.proceed_type = :OnSuccess
             command.proceeding = next_command
             break
@@ -564,6 +565,7 @@ module TMBSH
             next_token
             skip_whitespaces_and_newlines
             next_command = parse_command_with_assignments(*stop_tokens)
+            command.fork_command = true if next_command.fork_command
             command.proceed_type = :OnFail
             command.proceeding = next_command
             break
@@ -571,6 +573,7 @@ module TMBSH
             next_token
             skip_whitespaces_and_newlines
             next_command = parse_command_with_assignments(*stop_tokens)
+            command.fork_command = true if next_command.fork_command
             command.proceed_type = :Pipe
             command.proceeding = next_command
             break

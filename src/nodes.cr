@@ -5,9 +5,12 @@ require "./context"
 module TMBSH
   class Interpreter
     class VariableRef
-      @name : ::String
+      @name : StringName
 
       def initialize(name : ::String)
+        @name = StringName.new(name)
+      end
+      def initialize(name : StringName)
         @name = name
       end
 
@@ -77,35 +80,37 @@ module TMBSH
         to[@key.evaluate(context)] = @value.evaluate(context)
       end
     end
-
-    struct MethodAccess < Action
-      @method_name : ::String
-      getter method_name
-
-      def initialize(method_name : ::String)
-        @method_name = method_name
-      end
-
-      def constant? : ::Bool
-        true
-      end
-
-      def apply(to : Variant, context : Context) : Variant
-        to.get_method(@method_name)
-      end
-    end
+    #
+    # struct MethodAccess < Action
+    #   @method_name : StringName
+    #   getter method_name
+    #
+    #   def initialize(method_name : ::String)
+    #     @method_name = StringName.new(method_name)
+    #   end
+    #
+    #   def intialize(method_name : StringName)
+    #     @method_name = method_name
+    #   end
+    #
+    #   def constant? : ::Bool
+    #     true
+    #   end
+    #
+    #   def apply(to : Variant, context : Context) : Variant
+    #     to.get_method(@method_name)
+    #   end
+    # end
 
     struct MethodCall < Action
       @args : ::Array(ValueNode)
-      @method_name : ::String
-      @method_hash : UInt64
+      @method_name : StringName
       getter args
       getter method_name
 
       def initialize(method_name : ::String, args : ::Array(ValueNode))
         @args = args
-        @method_name = method_name
-        @method_hash = method_name.hash
+        @method_name = StringName.new(method_name)
       end
 
       def constant? : ::Bool
@@ -128,11 +133,11 @@ module TMBSH
         end
         # {%if flag?(:method_hash_caching)%}
           # p! "after call"
-        if method = to.get_method(@method_hash)
-          method.call(context, args)
-        else
+        # if method = to.get_method(@method_hash)
+          # method.call(context, args)
+        # else
           to.get_method(@method_name).call(context, args)
-        end
+        # end
         # {% else %}
         # to.get_method(@method_name).call(context, args)
         # {% end %}
@@ -1270,22 +1275,31 @@ module TMBSH
 
       @status : Process::Status?
 
-      def wait : Nil
+      def wait(context : Context) : Nil
         if process = @attached_process
           @status = process.wait
           @file.try &.close
           if proceeding = @proceeding
             process.output.finalize if process.output?
-            proceeding.wait
+            proceeding.wait(context)
           end
         else
           if proceeding = @proceeding
-            proceeding.wait
+            proceeding.wait(context)
+          end
+        end
+        if proceeding = @proceeding
+          exit_code = @status.try &.exit_code?
+          case @proceed_type
+            when .on_success?
+              proceeding.execute(context, false) if exit_code == 0
+            when .on_fail?
+              proceeding.execute(context, false) if exit_code != 0
           end
         end
       end
 
-      def execute(context : Context) : Result
+      def execute(context : Context, allow_fork : ::Bool = true) : Result
         process_context = context
         if @fork_command
           process_context = context.dup
@@ -1294,7 +1308,14 @@ module TMBSH
         process = create_process(process_context,
         input_io: context.input || Process::Redirect::Close,
         output_io: context.output || Process::Redirect::Close, error_io: context.error || Process::Redirect::Close)
-        wait unless @fork_command
+        unless allow_fork && @fork_command
+          wait(context)
+        else
+          spawn do
+            wait(context)
+          end
+          Fiber.yield
+        end
         # if status = @status
         #   exit_code = status.exit_code?
         # end

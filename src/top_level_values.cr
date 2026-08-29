@@ -191,7 +191,7 @@ module TMBSH
   VARS_FUNCTION = TMBSH.tl_function("vars", 0) do
     map = {} of Variant => Variant
     context.current_variable_stack.@vars.last.each do |k,v|
-      map[String.new(k)] = v
+      map[String.new(k.to_s)] = v
     end
     # context.variable_stack.@vars.last.each do |k,v|
     #   map[String.new(k)] = v
@@ -200,28 +200,28 @@ module TMBSH
   end
 
   TOP_LEVEL_VALUES = {
-    "true"      => TRUE,
-    "false"     => FALSE,
-    "null"      => NULL,
-    "print"     => PRINT_FUNCTION,
-    "enumerate" => ENUMERATE_FUNCTION,
-    "zip"       => ZIP_FUNCTION,
-    "dir"       => DIR_FUNCTION,
-    "readline"  => READLINE_FUNCTION,
-    "rand"      => RAND_FUNCTION,
-    "randi"     => RANDI_FUNCTION,
-    "randie"     => RANDIE_FUNCTION,
-    "max"       => MAX_FUNCTION,
-    "min"       => MIN_FUNCTION,
-    "time"      => TIME_FUNCTION,
-    "typeof"    => TYPE_OF_FUNCTION,
-    "vars"      => VARS_FUNCTION,
-  } of ::String => Variant
+    StringName.new("true")      => TRUE,
+    StringName.new("false" )    => FALSE,
+    StringName.new("null")      => NULL,
+    StringName.new("print")     => PRINT_FUNCTION,
+    StringName.new("enumerate") => ENUMERATE_FUNCTION,
+    StringName.new("zip")       => ZIP_FUNCTION,
+    StringName.new("dir")       => DIR_FUNCTION,
+    StringName.new("readline")  => READLINE_FUNCTION,
+    StringName.new("rand")      => RAND_FUNCTION,
+    StringName.new("randi")     => RANDI_FUNCTION,
+    StringName.new("randie")     => RANDIE_FUNCTION,
+    StringName.new("max")       => MAX_FUNCTION,
+    StringName.new("min")       => MIN_FUNCTION,
+    StringName.new("time")      => TIME_FUNCTION,
+    StringName.new("typeof")    => TYPE_OF_FUNCTION,
+    StringName.new("vars")      => VARS_FUNCTION,
+  } of StringName => Variant
   VARIABLES_AS_LITERALS = {
-    "true" => TRUE,
-    "false" => FALSE,
-    "null"  => NULL,
-    "print" => PRINT_FUNCTION,
-    "typeof" => TYPE_OF_FUNCTION,
-  } of ::String => Variant
+    StringName.new("true") => TRUE,
+    StringName.new("false") => FALSE,
+    StringName.new("null")  => NULL,
+    StringName.new("print") => PRINT_FUNCTION,
+    StringName.new("typeof") => TYPE_OF_FUNCTION,
+  } of StringName => Variant
 end
