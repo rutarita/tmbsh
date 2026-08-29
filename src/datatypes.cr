@@ -241,7 +241,7 @@ module TMBSH
     def get_method(name : StringName)
       if method = @@methods[name]?
         # {% if flag?(:method_hash_caching) %}
-        @@methods_hash_cache[name.hash] = method
+        # @@methods_hash_cache[name.hash] = method
         # {% end %}
         method
       else
