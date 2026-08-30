@@ -79,10 +79,11 @@ module TMBSH
       val
     end
 
-    def parse_variable_access : Interpreter::SingleValueNode
+    def parse_variable_access : Interpreter::SingleValueNode | Interpreter::StringNode
       # next_token
       if token.kind.varname?
         name = token.raw_value
+        next_token
         node = if var = VARIABLES_AS_LITERALS[name]?
           Interpreter::SingleValueNode.new(var)
         else
@@ -90,8 +91,11 @@ module TMBSH
           Interpreter::VariableRef.new(name)
         )
         end
-        next_token
-        node
+        if token.kind.path_separator? || token.kind.string?
+          parse_string(node)
+        else
+          node
+        end
       elsif token.kind.curly_bracket_open?
         @lexer.lex_varname = true
         mode = @lexer.string_mode
@@ -135,10 +139,13 @@ module TMBSH
       Token::Kind::GreaterThan,
       Token::Kind::LessThan,
     })
-    def parse_string : Interpreter::SingleValueNode | Interpreter::StringNode
+    def parse_string(start_with_node : Interpreter::ValueNode? = nil) : Interpreter::SingleValueNode | Interpreter::StringNode
       string_mode = StringMode::Plain
       buf = IO::Memory.new
       string_node = Interpreter::StringNode.new
+      if start_with_node
+        string_node.add_node start_with_node
+      end
       loop do
         if token.kind.single_apostrophe?
           case string_mode
