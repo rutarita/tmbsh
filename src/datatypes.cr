@@ -2234,7 +2234,7 @@ module TMBSH
         io << "{ "
         @value.each do |k, v|
           io << k.to_s
-          io << " : "
+          io << " = "
           io << v.to_s
           io << ' '
         end
