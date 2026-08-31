@@ -462,8 +462,10 @@ module TMBSH
           elsif part.is_a?(ExpansionType)
             case part
             when ExpansionType::Home
-              string_parts.concat(part.to_s[1..].split('/').map { |str| {str, false} })
-            when ExpansionType::PathSeparator
+              separated.concat(part.to_s[1..].split('/'))#.map { |str| {str, false} })
+              string_parts.clear
+              using_regex = false          
+ when ExpansionType::PathSeparator
               unless string_parts.empty?
                 pathling = assemble(string_parts, using_regex)
                 string_parts.clear
