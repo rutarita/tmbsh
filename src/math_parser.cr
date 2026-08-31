@@ -1,8 +1,8 @@
 require "./parser"
 require "./nodes"
+
 module TMBSH
   class Parser
-
     private def unexpected_math_token
       raise UnexpectedToken.new("Unexpected token when parsing math expression: #{@lexer.math_token}")
     end
@@ -26,18 +26,18 @@ module TMBSH
       loop do
         token = @lexer.next_math_token
         case token.kind
-          when .number?
-            # math_expr.add_part(token.raw_value.as(Int64 | Float64))
-          when .variable?
-            # math_expr.dd_part(Interpreter::VariableRef.new(token.raw_value.as(::String)))
-            unexpected_math_token unless expect_value
-            parts << Interpreter::VariableRef.new(token.raw_value.as(::String))
-          when .plus?
-            unexpected_math_token if expect_value
-            unless operation == Interpreter::MathExpressionNode::Operation::Add
+        when .number?
+          # math_expr.add_part(token.raw_value.as(Int64 | Float64))
+        when .variable?
+          # math_expr.dd_part(Interpreter::VariableRef.new(token.raw_value.as(::String)))
+          unexpected_math_token unless expect_value
+          parts << Interpreter::VariableRef.new(token.raw_value.as(::String))
+        when .plus?
+          unexpected_math_token if expect_value
+          unless operation == Interpreter::MathExpressionNode::Operation::Add
             operation = Interpreter::MathExpressionNode::Operation::Add
             # math_expr.add_part(parts, )
-            end
+          end
           # when .plus?
           #   math_expr.add_part(:Add)
           # when .minus?
@@ -46,12 +46,12 @@ module TMBSH
           #   math_expr.add_part(:Mul)
           # when .slash?
           #   math_expr.add_part(:Div)
-          when .parenthesis_open?
-            # math_expr.add_part(parse_math_expression)
-          when .parenthesis_close?
-            break
+        when .parenthesis_open?
+          # math_expr.add_part(parse_math_expression)
+        when .parenthesis_close?
+          break
         end
-      # math_expr
+        # math_expr
       end
       # parts = [] of Int64 | Float64 | MathExpressionNode
       # await_value = true

@@ -4,8 +4,10 @@ module TMBSH
 
   class MethodDoesNotExist < Exception
   end
+
   class ArgumentError < Exception
   end
+
   class TypeError < Exception
   end
 end

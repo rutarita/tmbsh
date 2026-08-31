@@ -5,6 +5,7 @@ struct StringName
 
   @index : Int32
   @string_hash : UInt64
+
   def initialize(str : String)
     @string_hash = str.hash
     index = @@rw_lock.read do

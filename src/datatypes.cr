@@ -2,6 +2,7 @@ require "json"
 require "./exceptions"
 require "./context"
 require "./string_name"
+
 module TMBSH
   macro require_arguments(func_name, amount, is_method = false)
     {% if amount.is_a? NumberLiteral %}
@@ -9,11 +10,11 @@ module TMBSH
     {% elsif amount.is_a? RangeLiteral && amount.begin.is_a?(NilLiteral) && amount.end.is_a?(NumberLiteral) %}
     raise ArgumentError.new("{{ is_method ? "method".id : "function".id }} {{func_name.id}} requires 0..{{".".id if amount.excludes_end?}}{{amount.end}} arguments") if \
     args.size {{amount.excludes_end? ? ">=".id : ">".id}} {{amount.end + (is_method ? 1 : 0)}}
-    {% elsif amount.is_a? RangeLiteral && amount.begin.is_a?(NumberLiteral) && amount.end.is_a?(NumberLiteral)%}
+    {% elsif amount.is_a? RangeLiteral && amount.begin.is_a?(NumberLiteral) && amount.end.is_a?(NumberLiteral) %}
     raise ArgumentError.new("{{ is_method ? "method".id : "function".id }} {{func_name.id}} requires {{amount.begin}}..{{".".id if amount.excludes_end?}}{{amount.end}} arguments") if \
     args.size < {{amount.begin + (is_method ? 1 : 0)}} || args.size {{amount.excludes_end? ? ">=".id : ">".id}} {{amount.end + (is_method ? 1 : 0)}}
-    {% elsif amount.is_a? RangeLiteral && amount.begin.is_a?(NumberLiteral) && amount.end.is_a?(NilLiteral)%}
-    {% unless amount.begin == (is_method ? 1 : 0)%}
+    {% elsif amount.is_a? RangeLiteral && amount.begin.is_a?(NumberLiteral) && amount.end.is_a?(NilLiteral) %}
+    {% unless amount.begin == (is_method ? 1 : 0) %}
     raise ArgumentError.new("{{ is_method ? "method".id : "function".id }} {{func_name.id}} requires at least {{amount.begin}} argument{{"s".id unless amount.end == 1}}") if \
     args.size < {{amount.begin + (is_method ? 1 : 0)}}
     {% end %}
@@ -75,8 +76,6 @@ module TMBSH
       StringName.new("to_json") => TO_JSON_METHOD,
     } of StringName => Function
   end
-
-
 
   protected def self.variant_from_json(json : JSON::Any) : Variant
     raw = json.raw
@@ -211,9 +210,11 @@ module TMBSH
 
     abstract def to_json : ::String
     abstract def to_json(builder : JSON::Builder)
+
     def to_json_object_key
       to_s
     end
+
     abstract def hash : UInt64
     abstract def clone
     abstract def dup
@@ -1733,10 +1734,10 @@ module TMBSH
     end
     SPLIT_METHOD = TMBSH.method("split", 0..1) do
       arr = if sep = args[1]?
-        this.@value.split(sep.to_s)
-      else
-        this.@value.split
-      end
+              this.@value.split(sep.to_s)
+            else
+              this.@value.split
+            end
       Array.new(
         arr.map do |item|
           String.new(item).as(Variant)
@@ -2534,7 +2535,7 @@ module TMBSH
 
     @@methods_hash_cache : Hash(UInt64, Function) = {} of UInt64 => Function
     @@methods = TMBSH.generate_methods({
-      "bind"  => BIND_METHOD,
+      "bind" => BIND_METHOD,
     })
     @@type_aliases = ::Set{"func", "function"}
 
@@ -2905,7 +2906,7 @@ module TMBSH
                elsif time.is_a?(Float)
                  time.@value.seconds
                elsif time.is_a?(String)
-                time.to_f64.seconds
+                 time.to_f64.seconds
                else
                  raise ArgumentError.new("Expected Int or Float as first argument to await")
                end

@@ -86,7 +86,7 @@ module TMBSH
       end
 
       def set_variable(name : ::String, value : Variant)
-       set_variable(StringName.new(name), value)
+        set_variable(StringName.new(name), value)
       end
 
       def get_variable(name : ::String)

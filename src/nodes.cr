@@ -1,6 +1,7 @@
 require "./interpreter"
 require "./exceptions"
 require "./context"
+
 # require "./user_defined_function"
 module TMBSH
   class Interpreter
@@ -10,6 +11,7 @@ module TMBSH
       def initialize(name : ::String)
         @name = StringName.new(name)
       end
+
       def initialize(name : StringName)
         @name = name
       end
@@ -80,6 +82,7 @@ module TMBSH
         to[@key.evaluate(context)] = @value.evaluate(context)
       end
     end
+
     #
     # struct MethodAccess < Action
     #   @method_name : StringName
@@ -132,11 +135,11 @@ module TMBSH
           args_size
         end
         # {%if flag?(:method_hash_caching)%}
-          # p! "after call"
+        # p! "after call"
         # if method = to.get_method(@method_hash)
-          # method.call(context, args)
+        # method.call(context, args)
         # else
-          to.get_method(@method_name).call(context, args)
+        to.get_method(@method_name).call(context, args)
         # end
         # {% else %}
         # to.get_method(@method_name).call(context, args)
@@ -146,6 +149,7 @@ module TMBSH
 
     struct AttributeAccess < Action
       @name : ::String
+
       def initialize(name : ::String)
         @name = name
       end
@@ -162,6 +166,7 @@ module TMBSH
     struct AttributeAssignment < Action
       @name : ::String
       @value : ValueNode
+
       def initialize(name : ::String, value : ValueNode)
         @name = name
         @value = value
@@ -290,7 +295,6 @@ module TMBSH
     end
 
     class MathExpressionNode < ValueNode
-
       enum Operation
         None
         Add
@@ -307,10 +311,11 @@ module TMBSH
       end
 
       # @parts = [] of Int64 | Float64 | MathExpressionNode | VariableRef | Operation
-      @parts = [] of {Int64 | Float64 |  MathExpressionNode | VariableRef, Operation}
+      @parts = [] of {Int64 | Float64 | MathExpressionNode | VariableRef, Operation}
+
       # @separated_parts
       # def add_part(part : Int64 | Float64 | MathExpressionNode | VariableRef | Operation)
-      def add_part(part : Int64 | Float64 | MathExpressionNode | VariableRef , op : Operation)
+      def add_part(part : Int64 | Float64 | MathExpressionNode | VariableRef, op : Operation)
         # @parts << part
         @parts << {part, op}
       end
@@ -320,27 +325,25 @@ module TMBSH
       end
 
       private def separate_parts
-
       end
 
       def evaluate_num : Int64 | Float64
-      0.0
+        0.0
       end
 
       def evaluate(context : Context) : Variant
         p! @parts
         num = evaluate_num
         case num
-          in Int64
-            Int.new(num)
-          in Float64
-            Float.new(num)
+        in Int64
+          Int.new(num)
+        in Float64
+          Float.new(num)
         end
       end
 
       def fold : Variant?
       end
-
     end
 
     class StringNode < ValueNode
@@ -376,6 +379,7 @@ module TMBSH
       end
 
       @string_variant_cache : ::Hash(::String, String) = {} of ::String => String
+
       private def create_string(str)
         if variant = @string_variant_cache[str]?
           variant
@@ -462,10 +466,10 @@ module TMBSH
           elsif part.is_a?(ExpansionType)
             case part
             when ExpansionType::Home
-              separated.concat(part.to_s[1..].split('/'))#.map { |str| {str, false} })
+              separated.concat(part.to_s[1..].split('/')) # .map { |str| {str, false} })
               string_parts.clear
-              using_regex = false          
- when ExpansionType::PathSeparator
+              using_regex = false
+            when ExpansionType::PathSeparator
               unless string_parts.empty?
                 pathling = assemble(string_parts, using_regex)
                 string_parts.clear
@@ -572,7 +576,7 @@ module TMBSH
       end
 
       def to_single_value_node : SingleValueNode
-      if @parts.size == 1
+        if @parts.size == 1
           part = @parts[0]
           return SingleValueNode.new(create_string(part.to_s))
         end
@@ -894,22 +898,22 @@ module TMBSH
 
       private def capture_depending(context : Context)
         unless @return_status
-            capture(context)
-          else
-            capture_status(context)
-          end
+          capture(context)
+        else
+          capture_status(context)
+        end
       end
 
       def evaluate(context : Context) : Variant
         unless @async
           capture_depending(context)
         else
-        channel = Channel(Variant).new
-        spawn do
-          val = capture_depending(context)
-          channel.send(val)
-        end
-        Promise.new(channel)
+          channel = Channel(Variant).new
+          spawn do
+            val = capture_depending(context)
+            channel.send(val)
+          end
+          Promise.new(channel)
         end
       end
 
@@ -1189,6 +1193,7 @@ module TMBSH
       end
 
       @shell_command_result : Result?
+
       def create_process(
         context : Context,
         input_io : IO | Process::Redirect = :Inherit,
@@ -1203,41 +1208,41 @@ module TMBSH
         if shell_command = context.interpreter.get_shell_command(command)
           # execute_shell_command(shell_command, args, input_io, output_io, error_io)
           shell_command_input_io = if input_io.is_a?(Process::Redirect)
-            case input_io
-              when .inherit?
-                STDIN
-              # when .
-            end
-          else
-            input_io
-          end
+                                     case input_io
+                                     when .inherit?
+                                       STDIN
+                                       # when .
+                                     end
+                                   else
+                                     input_io
+                                   end
           shell_command_output_io = if output_io.is_a?(Process::Redirect)
-            case output_io
-              when .inherit?
-                STDIN
-              # when .
-            end
-          else
-            output_io
-          end
+                                      case output_io
+                                      when .inherit?
+                                        STDIN
+                                        # when .
+                                      end
+                                    else
+                                      output_io
+                                    end
           shell_command_error_io = if error_io.is_a?(Process::Redirect)
-            case error_io
-              when .inherit?
-                STDIN
-              # when .
-            end
-          else
-            error_io
-          end
+                                     case error_io
+                                     when .inherit?
+                                       STDIN
+                                       # when .
+                                     end
+                                   else
+                                     error_io
+                                   end
           if @fork_command
             spawn do
               @shell_command_result = shell_command.call(
-              context, shell_command_input_io, shell_command_output_io, shell_command_error_io, args
+                context, shell_command_input_io, shell_command_output_io, shell_command_error_io, args
               )
             end
           else
             @shell_command_result = shell_command.call(
-            context,  shell_command_input_io, shell_command_output_io, shell_command_error_io, args
+              context, shell_command_input_io, shell_command_output_io, shell_command_error_io, args
             )
           end
           return
@@ -1293,10 +1298,10 @@ module TMBSH
         if proceeding = @proceeding
           exit_code = @status.try &.exit_code?
           case @proceed_type
-            when .on_success?
-              proceeding.execute(context, false) if exit_code == 0
-            when .on_fail?
-              proceeding.execute(context, false) if exit_code != 0
+          when .on_success?
+            proceeding.execute(context, false) if exit_code == 0
+          when .on_fail?
+            proceeding.execute(context, false) if exit_code != 0
           end
         end
       end
@@ -1308,8 +1313,8 @@ module TMBSH
           process_context.add_variable_stack
         end
         process = create_process(process_context,
-        input_io: context.input || Process::Redirect::Close,
-        output_io: context.output || Process::Redirect::Close, error_io: context.error || Process::Redirect::Close)
+          input_io: context.input || Process::Redirect::Close,
+          output_io: context.output || Process::Redirect::Close, error_io: context.error || Process::Redirect::Close)
         unless allow_fork && @fork_command
           wait(context)
         else
@@ -1472,7 +1477,7 @@ module TMBSH
           res = @body.execute(context)
           # @body.unset_variables
           # if res.is_a?(Result | Break)
-            return res
+          return res
           # end
         else
           @elsif_bodies.each do |condition, block, varname|
@@ -1485,7 +1490,7 @@ module TMBSH
               res = block.execute(context)
               # block.unset_variables
               # if res.is_a?(Result | Break)
-                return res
+              return res
               # end
               return NOTHING_RESULT
             end
@@ -1494,7 +1499,7 @@ module TMBSH
             res = else_body.execute(context)
             # else_body.unset_variables
             # if res.is_a?(Result | Break)
-              return res
+            return res
             # end
             # what was i thinking?
           end
@@ -1662,7 +1667,6 @@ module TMBSH
       getter exit_code
       @status : Process::Status?
       getter status
-
 
       def initialize(exit_code : Int32?, status : Process::Status? = nil)
         @exit_code = exit_code

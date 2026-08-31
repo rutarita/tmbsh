@@ -5,25 +5,27 @@ require "./lexer/*"
 require "./parser"
 require "./shell_commands"
 require "./variable_stack"
+
 module TMBSH
   class Interpreter
-
-
     alias ShellCommand = Context, IO?, IO?, IO?, ::Deque(::String) -> Result
-    @shell_commands : Hash(::String, ShellCommand)  = SHELL_COMMANDS
+    @shell_commands : Hash(::String, ShellCommand) = SHELL_COMMANDS
+
     def get_shell_command(name : ::String) : ShellCommand?
       @shell_commands[name]?
     end
+
     @strict : ::Bool = false
 
     @cwd : ::String
     property cwd
-      #
-      # def set_pseudoconstants_from_env
-      #   ENV.each do |k, v|
-      #     @variable_stack.set_constant(k, String.new(v))
-      #   end
-      # end
+
+    #
+    # def set_pseudoconstants_from_env
+    #   ENV.each do |k, v|
+    #     @variable_stack.set_constant(k, String.new(v))
+    #   end
+    # end
 
     def strict
       @strict
@@ -56,7 +58,7 @@ module TMBSH
     def execute_statement(statement : StatementNode) : Nil
       res = statement.execute(self)
       if res.is_a?(CommandFinish)
-          set_constant("?", ExitStatus.new(res.exit_code, res.status))
+        set_constant("?", ExitStatus.new(res.exit_code, res.status))
       end
     end
 
@@ -64,17 +66,17 @@ module TMBSH
       context = Context.new(self) unless context
       parser = Parser.new(parsable)
       until parser.token.kind.eof?
-          begin
+        begin
           statement = parser.parse_statement
-          rescue e
-            puts "tmsbh: Parsing error: #{e.to_s}"
-            return
-          end
-          begin
-            statement.execute(context)
-          rescue e
-            puts "tmbsh: Exception: #{e.to_s}"
-          end
+        rescue e
+          puts "tmsbh: Parsing error: #{e.to_s}"
+          return
+        end
+        begin
+          statement.execute(context)
+        rescue e
+          puts "tmbsh: Exception: #{e.to_s}"
+        end
       end
     end
 
@@ -86,12 +88,13 @@ module TMBSH
         statement.execute(context)
       end
     end
+
     def execute_string(string : ::String, *, raise_on_error : ::Bool = false, context : Context? = nil)
       unless raise_on_error
-          execute_parsable(string, context)
-        else
-          execute_parsable_with_errors(string, context)
-        end
+        execute_parsable(string, context)
+      else
+        execute_parsable_with_errors(string, context)
+      end
     end
 
     def execute_file(path : ::String | Path, *, raise_on_error : ::Bool = false, context : Context? = nil)
@@ -107,4 +110,3 @@ module TMBSH
     end
   end
 end
-

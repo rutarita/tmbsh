@@ -1,5 +1,6 @@
 require "./token"
 require "./math_token"
+
 module TMBSH
   abstract class Lexer
     @row : Int32 = 1
@@ -12,6 +13,7 @@ module TMBSH
     # @current_string_delimiter : Char = '\0'
     @start_of_statement : ::Bool = true
     property start_of_statement
+
     private def start_statement
       if @string_mode.plain?
         @start_of_statement = false
@@ -73,7 +75,7 @@ module TMBSH
         next_char :Varname
         @token.raw_value = char.to_s
         @token.kind = :Varname
-      else# str = current_char.to_s
+      else # str = current_char.to_s
         next_char_string_or token
       end
     end
@@ -87,6 +89,7 @@ module TMBSH
     @lexing_assignment_value : ::Bool = false
     @lex_argnames : ::Bool = false
     property lex_argnames
+
     def next_token : Token
       # p! "#{@lex_for_varnames} #{token}"
       # skip_whitespace
@@ -155,13 +158,13 @@ module TMBSH
         start_statement
         if peek_char == '='
           if @string_mode.plain?
-              next_char
-              next_char :NotEqual
-            else
-              next_char
-              next_char
-              @token.kind = :String
-              @token.raw_value = "!="
+            next_char
+            next_char :NotEqual
+          else
+            next_char
+            next_char
+            @token.kind = :String
+            @token.raw_value = "!="
           end
         else
           next_char_string_or_varname_or :Exclamation
@@ -355,10 +358,10 @@ module TMBSH
               @token.kind = :String
             end
           else
-          # elsif current_char == '='
+            # elsif current_char == '='
             # next_char :String
             if current_char == '=' # current workaround i suppose
-            # if @lex_assignments && current_char == '='
+              # if @lex_assignments && current_char == '='
               next_char
               @token.raw_value = str
               @token.kind = :AssignmentTo
@@ -379,22 +382,21 @@ module TMBSH
     end
 
     KEYWORDS = {
-      "def"    => :DefKeyword,
-      "if"     => :IfKeyword,
-      "else"   => :ElseKeyword,
-      "elsif"  => :ElifKeyword,
-      "elif"   => :ElifKeyword,
-      "for"    => :ForKeyword,
-      "while"  => :WhileKeyword,
-      "return" => :ReturnKeyword,
+      "def"      => :DefKeyword,
+      "if"       => :IfKeyword,
+      "else"     => :ElseKeyword,
+      "elsif"    => :ElifKeyword,
+      "elif"     => :ElifKeyword,
+      "for"      => :ForKeyword,
+      "while"    => :WhileKeyword,
+      "return"   => :ReturnKeyword,
       "continue" => :ContinueKeyword,
-      "next"    => :ContinueKeyword,
-      "break"  => :BreakKeyword,
-      "end"    => :EndKeyword,
+      "next"     => :ContinueKeyword,
+      "break"    => :BreakKeyword,
+      "end"      => :EndKeyword,
     } of ::String => Token::Kind
 
     LONGEST_KEYWORD_LENGTH = 8
-
 
     private enum StringMode
       Plain
@@ -414,6 +416,7 @@ module TMBSH
     end
     @string_mode : StringMode = :Plain
     property string_mode
+
     private def resolve_escaped(char : Char) : Char
       case char
       when 'n'
@@ -430,7 +433,7 @@ module TMBSH
     end
 
     PLAIN_MODE_STOP_CHARACTERS_SET = ::Set(Char).new({
-    ' ', '\t', '\n', ';', '$', '<', '>', '|', '(', ')', '[', ']', '{', '}', '?', '*', '\0', '"', '\'', '/', '=', '#', '^'
+      ' ', '\t', '\n', ';', '$', '<', '>', '|', '(', ')', '[', ']', '{', '}', '?', '*', '\0', '"', '\'', '/', '=', '#', '^',
     })
     # @@string_stop_characters_set = Set(Char).new({})
     DOUBLE_APOSTROPHE_MODE_STOP_CHARACTERS_SET = ::Set(Char).new({'$', '/'})
@@ -573,7 +576,7 @@ module TMBSH
           next_char
           # next_char
         else
-        mem << char
+          mem << char
         end
       end
       mem.to_s
@@ -581,10 +584,11 @@ module TMBSH
 
     @math_token = MathToken.new
     getter math_token
+
     def next_math_token
       skip_whitespace
       case current_char
-        when '0'..'9'
+      when '0'..'9'
         str = consume_math_string
         if num = parse_number(str)
           @math_token.kind = :Number
@@ -593,43 +597,43 @@ module TMBSH
           @math_token.kind = :Variable
           @math_token.raw_value = str
         end
-        when '('
-          @math_token.kind = :ParenthesisOpen
-          next_char
-        when ')'
-          @math_token.kind = :ParenthesisClose
-          next_char
-        when '+'
-          @math_token.kind = :Plus
-          next_char
-        when '-'
-          @math_token.kind = :Minus
-          next_char
-        when '/'
-          if peek_char == '/'
+      when '('
+        @math_token.kind = :ParenthesisOpen
+        next_char
+      when ')'
+        @math_token.kind = :ParenthesisClose
+        next_char
+      when '+'
+        @math_token.kind = :Plus
+        next_char
+      when '-'
+        @math_token.kind = :Minus
+        next_char
+      when '/'
+        if peek_char == '/'
           next_char
           next_char
           @math_token.kind = :DoubleSlash
-          else
+        else
           next_char
           @math_token.kind = :Slash
-          end
-        when '*'
-          if peek_char == '*'
+        end
+      when '*'
+        if peek_char == '*'
           next_char
           next_char
           @math_token.kind = :DoubleStar
-          else
+        else
           next_char
           @math_token.kind = :Star
-          end
+        end
       end
       @math_token
     end
 
     private def parse_number(str : ::String) : Int64 | Float64 | Nil
       str.to_i64?(whitespace: true, underscore: true, prefix: true, leading_zero_is_octal: true) ||
-      str.to_f64?
+        str.to_f64?
     end
 
     private def consume_math_string : ::String

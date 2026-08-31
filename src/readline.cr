@@ -1,11 +1,13 @@
 @[Link("readline")]
 lib LibReadLine
   alias HistData = Void*
+
   struct HIST_ENTRY
     line : UInt8*
     timestamp : UInt8*
     data : HistData
   end
+
   fun readline(prompt : UInt8*) : UInt8*
   fun history_list : HIST_ENTRY**
   fun add_history(line : UInt8*) : Void
@@ -13,7 +15,6 @@ lib LibReadLine
 end
 
 module ReadLine
-
   extend self
 
   def readline(prompt : String) : String?

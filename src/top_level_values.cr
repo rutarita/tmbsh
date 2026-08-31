@@ -120,31 +120,31 @@ module TMBSH
 
   RAND_FUNCTION = TMBSH.tl_function("rand", 0..2) do
     num = case args.size
-      when 0 then rand(Int64::MIN..Int64::MAX)
-      when 1 then rand(args[0].to_i64)
-      when 2 then rand(args[0].to_i64..args[1].to_i64)
-      else raise "Unreachable"
-      end
+          when 0 then rand(Int64::MIN..Int64::MAX)
+          when 1 then rand(args[0].to_i64)
+          when 2 then rand(args[0].to_i64..args[1].to_i64)
+          else        raise "Unreachable"
+          end
     Float.new(num.to_f64)
   end
 
   RANDI_FUNCTION = TMBSH.tl_function("randi", 0..2) do
-      num = case args.size
-      when 0 then rand(Int64::MIN..Int64::MAX)
-      when 1 then rand(args[0].to_i64)
-      when 2 then rand(args[0].to_i64..args[1].to_i64)
-      else raise "Unreachable"
-      end
+    num = case args.size
+          when 0 then rand(Int64::MIN..Int64::MAX)
+          when 1 then rand(args[0].to_i64)
+          when 2 then rand(args[0].to_i64..args[1].to_i64)
+          else        raise "Unreachable"
+          end
     Int.new(num.to_f64)
   end
 
   RANDIE_FUNCTION = TMBSH.tl_function("randie", 0..2) do
     num = case args.size
-      when 0 then rand(Int64::MIN..Int64::MAX)
-      when 1 then rand(args[0].to_i64)
-      when 2 then rand(args[0].to_i64...args[1].to_i64)
-      else raise "Unreachable"
-      end
+          when 0 then rand(Int64::MIN..Int64::MAX)
+          when 1 then rand(args[0].to_i64)
+          when 2 then rand(args[0].to_i64...args[1].to_i64)
+          else        raise "Unreachable"
+          end
     Int.new(num.to_f64)
   end
 
@@ -156,8 +156,8 @@ module TMBSH
     args.each(within: 1..) do |num|
       val = num.to_f64
       if val > best_val
-      best = num
-      best_val = val
+        best = num
+        best_val = val
       end
     end
     best
@@ -170,8 +170,8 @@ module TMBSH
     args.each(within: 1..) do |num|
       val = num.to_f64
       if val < best_val
-      best = num
-      best_val = val
+        best = num
+        best_val = val
       end
     end
     best
@@ -190,7 +190,7 @@ module TMBSH
 
   VARS_FUNCTION = TMBSH.tl_function("vars", 0) do
     map = {} of Variant => Variant
-    context.current_variable_stack.@vars.last.each do |k,v|
+    context.current_variable_stack.@vars.last.each do |k, v|
       map[String.new(k.to_s)] = v
     end
     # context.variable_stack.@vars.last.each do |k,v|
@@ -201,7 +201,7 @@ module TMBSH
 
   TOP_LEVEL_VALUES = {
     StringName.new("true")      => TRUE,
-    StringName.new("false" )    => FALSE,
+    StringName.new("false")     => FALSE,
     StringName.new("null")      => NULL,
     StringName.new("print")     => PRINT_FUNCTION,
     StringName.new("enumerate") => ENUMERATE_FUNCTION,
@@ -210,7 +210,7 @@ module TMBSH
     StringName.new("readline")  => READLINE_FUNCTION,
     StringName.new("rand")      => RAND_FUNCTION,
     StringName.new("randi")     => RANDI_FUNCTION,
-    StringName.new("randie")     => RANDIE_FUNCTION,
+    StringName.new("randie")    => RANDIE_FUNCTION,
     StringName.new("max")       => MAX_FUNCTION,
     StringName.new("min")       => MIN_FUNCTION,
     StringName.new("time")      => TIME_FUNCTION,
@@ -218,10 +218,10 @@ module TMBSH
     StringName.new("vars")      => VARS_FUNCTION,
   } of StringName => Variant
   VARIABLES_AS_LITERALS = {
-    StringName.new("true") => TRUE,
-    StringName.new("false") => FALSE,
-    StringName.new("null")  => NULL,
-    StringName.new("print") => PRINT_FUNCTION,
+    StringName.new("true")   => TRUE,
+    StringName.new("false")  => FALSE,
+    StringName.new("null")   => NULL,
+    StringName.new("print")  => PRINT_FUNCTION,
     StringName.new("typeof") => TYPE_OF_FUNCTION,
   } of StringName => Variant
 end
