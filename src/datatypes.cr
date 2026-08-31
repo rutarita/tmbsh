@@ -245,7 +245,7 @@ module TMBSH
         # {% end %}
         method
       else
-        raise MethodDoesNotExist.new("Method #{name} doesn't exist on #{self.class}")
+        raise MethodDoesNotExist.new("Method #{name.to_s} doesn't exist on #{self.class}")
       end
     end
 
