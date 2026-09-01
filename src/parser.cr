@@ -86,23 +86,13 @@ module TMBSH
         name = token.raw_value
         next_token
         node = if var = VARIABLES_AS_LITERALS[name]?
-<<<<<<< HEAD
                  Interpreter::SingleValueNode.new(var)
                else
                  Interpreter::SingleValueNode.new(
                    Interpreter::VariableRef.new(name)
                  )
                end
-        if token.kind.path_separator? || token.kind.string?
-=======
-          Interpreter::SingleValueNode.new(var)
-        else
-        Interpreter::SingleValueNode.new(
-          Interpreter::VariableRef.new(name)
-        )
-        end
         if token.kind.path_separator? || token.kind.string? || token.kind.question? || token.kind.splat?
->>>>>>> 95b2492 (fixed string interpolation a bit)
           parse_string(node)
         else
           node
