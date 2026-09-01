@@ -1,0 +1,35 @@
+def compress(str)
+    parts=[]
+    iter=$str->str->iter
+    count=%1
+    current=$iter->next
+    for c in $iter
+        if $c == $current
+            count=$count->add(%1)
+        else
+            @$parts->append($count->str)
+            @$parts->append($current)
+            count=%1
+            current=$c
+        end
+    end
+    @$parts->append($count->str)
+    @$parts->append($current)
+    return $parts->join
+end
+
+def count_and_say(n)
+    if !$n->is_a?(int)
+        return $null
+    end
+    str=1
+    for i in $n->sub(%1)
+        str=$compress($str)
+    end
+    return $str
+end
+
+echo $count_and_say(%1)
+echo $count_and_say(%2)
+echo $count_and_say(%3)
+echo $count_and_say(%4)
