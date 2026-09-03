@@ -4,10 +4,8 @@ struct StringName
   @@rw_lock = Sync::RWLock.new
 
   @index : Int32
-  @string_hash : UInt64
 
   def initialize(str : String)
-    @string_hash = str.hash
     index = @@rw_lock.read do
       @@strings_hash[str]?
     end
@@ -35,7 +33,11 @@ struct StringName
     @@strings[@index]
   end
 
+  def to_s(io) : Nil
+    io << @@strings[@index]
+  end
+
   def hash
-    @string_hash
+    @index.to_u64
   end
 end
