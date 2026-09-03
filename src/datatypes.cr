@@ -190,6 +190,7 @@ module TMBSH
     end
 
     abstract def to_s : ::String
+    abstract def to_s(io) : Nil
     abstract def to_a : ::Array(Variant)
 
     def to_shfloat : Float
@@ -375,6 +376,10 @@ module TMBSH
 
     def to_s : ::String
       "<#{self.class.to_s.lchop("TMBSH::")} iterator>"
+    end
+
+    def to_s(io) : Nil
+      io << to_s
     end
 
     def to_a : ::Array(Variant)
@@ -672,6 +677,9 @@ module TMBSH
     def to_s : ::String
       @value.format(delimiter: nil)
     end
+    def to_s(io) : Nil
+      @value.format(io: io, delimiter: nil)
+    end
 
     def to_f64 : Float64
       @value.to_f64
@@ -871,6 +879,9 @@ module TMBSH
 
     def to_s : ::String
       @value.to_s
+    end
+    def to_s(io) : Nil
+      @value.to_s(io)
     end
 
     def to_f64 : Float64
@@ -1168,6 +1179,15 @@ module TMBSH
 
     def to_s : ::String
       join(" ")
+    end
+
+    def to_s(io) : Nil
+      return if @value.size == 0
+      @value.each(within: 0...-1) do |val|
+        val.to_s(io)
+        io << ' '
+      end
+      @value[-1].to_s(io)
     end
 
     def to_f64 : Float64
@@ -1507,10 +1527,18 @@ module TMBSH
 
     def to_s : ::String
       ::String.build do |io|
-        io << '^'
-        io << to_sharr.join(" ")
-        io << '^'
+        to_s(io)
       end
+    end
+
+    def to_s(io) : Nil
+      ary = @value.to_a
+      return if ary.size == 0
+      ary.each(within: 0...-1) do |val|
+        val.to_s(io)
+        io << ' '
+      end
+      ary[-1].to_s(io)
     end
 
     def to_f64 : Float64
@@ -1991,6 +2019,10 @@ module TMBSH
       @value
     end
 
+    def to_s(io) : Nil
+      io << @value
+    end
+
     def to_f64 : Float64
       @value.to_f64
     end
@@ -2232,15 +2264,19 @@ module TMBSH
 
     def to_s : ::String
       ::String.build do |io|
-        io << "{ "
+        to_s(io)
+      end
+    end
+
+    def to_s(io) : Nil
+      io << "{ "
         @value.each do |k, v|
-          io << k.to_s
+          k.to_s(io)
           io << " = "
-          io << v.to_s
+          v.to_s(io)
           io << ' '
         end
-        io << "}"
-      end
+      io << "}"
     end
 
     def to_a : ::Array(Variant)
@@ -2373,6 +2409,8 @@ module TMBSH
     def to_s : ::String
       ""
     end
+    def to_s(io) : Nil
+    end
 
     def to_f64 : Float64
       0.0
@@ -2475,6 +2513,10 @@ module TMBSH
 
     def to_s : ::String
       @value ? "true" : "false"
+    end
+
+    def to_s(io) : Nil
+      io << to_s
     end
 
     def to_f64 : Float64
@@ -2585,6 +2627,10 @@ module TMBSH
           "<Anonymus Function id: #{object_id}>"
         end
       end
+    end
+
+    def to_s(io) : Nil
+      io << to_s
     end
 
     def to_f64 : Float64
@@ -2741,6 +2787,10 @@ module TMBSH
       @file.fd.to_s
     end
 
+    def to_s(io) : Nil
+      io << @file.fd
+    end
+
     def to_f64 : Float64
       raise TypeError.new("Cannot convert File to Float")
     end
@@ -2826,6 +2876,10 @@ module TMBSH
 
     def to_s : ::String
       @exit_code.to_s
+    end
+
+    def to_s(io) : Nil
+      io << @exit_code
     end
 
     def to_f64 : Float64
@@ -2934,6 +2988,10 @@ module TMBSH
 
     def to_s : ::String
       @channel.to_s
+    end
+
+    def to_s(io) : Nil
+      io << @channel
     end
 
     def to_f64 : Float64
