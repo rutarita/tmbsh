@@ -164,10 +164,15 @@ module TMBSH
     end
 
     struct AttributeAssignment < Action
-      @name : ::String
+      @name : StringName
       @value : ValueNode
 
       def initialize(name : ::String, value : ValueNode)
+        @name = StringName.new(name)
+        @value = value
+      end
+
+      def initialize(name : StringName, value : ValueNode)
         @name = name
         @value = value
       end
@@ -1340,10 +1345,14 @@ module TMBSH
     end
 
     class VariableAssignmentNode < StatementNode
-      @assignments : ::Array({::String, ValueNode})
+      @assignments : ::Array({StringName, ValueNode})
+
+      def initialize(assignments : ::Array({StringName, ValueNode}))
+        @assignments = assignments
+      end
 
       def initialize(assignments : ::Array({::String, ValueNode}))
-        @assignments = assignments
+        @assignments = assignments.map { |str, val| {StringName.new(str), val}}
       end
 
       def execute(context : Context) : Result
@@ -1363,7 +1372,7 @@ module TMBSH
 
     class StatementBlockNode < StatementNode
       @statements : ::Array(StatementNode) = [] of StatementNode
-      @vars : ::Hash(::String, Variant) = {} of ::String => Variant
+      @vars : ::Hash(StringName, Variant) = {} of StringName => Variant
 
       # @auto_scope_managment = true
       # property auto_scope_managment
@@ -1395,8 +1404,12 @@ module TMBSH
         res || NOTHING_RESULT
       end
 
-      def set_variable(name : ::String, value : Variant)
+      def set_variable(name : StringName, value : Variant)
         @vars[name] = value
+      end
+
+      def set_variable(name : ::String, value : Variant)
+        set_variable(StringName.new(name), value)
       end
 
       def unset_variables
@@ -1454,18 +1467,23 @@ module TMBSH
 
     class IfStatementNode < StatementNode
       @condition : ConditionNode
-      @varname : ::String?
+      @varname : StringName?
       property varname
       @body : StatementBlockNode
-      @elsif_bodies : ::Array({ConditionNode, StatementBlockNode, ::String?}) = [] of {ConditionNode, StatementBlockNode, ::String?}
+      @elsif_bodies : ::Array({ConditionNode, StatementBlockNode, StringName?}) = [] of {ConditionNode, StatementBlockNode, StringName?}
       property elsif_bodies
       @else_body : StatementBlockNode?
       property else_body
 
-      def initialize(condition : ConditionNode, body : StatementBlockNode, varname : ::String?)
+      def initialize(condition : ConditionNode, body : StatementBlockNode, varname : StringName?)
         @condition = condition
         @body = body
         @varname = varname
+      end
+      def initialize(condition : ConditionNode, body : StatementBlockNode, varname : ::String?)
+        @condition = condition
+        @body = body
+        @varname = StringName.new(varname) if varname
       end
 
       def execute(context : Context) : Result
@@ -1515,10 +1533,15 @@ module TMBSH
     class WhileStatementNode < StatementNode
       @body : StatementBlockNode
       @condition : ConditionNode
-      @varname : ::String?
+      @varname : StringName?
       property varname
 
       def initialize(condition : ConditionNode, body : StatementBlockNode, varname : ::String? = nil)
+        @body = body
+        @condition = condition
+        @varname = StringName.new(varname) if varname
+      end
+      def initialize(condition : ConditionNode, body : StatementBlockNode, varname : StringName? = nil)
         @body = body
         @condition = condition
         @varname = varname
@@ -1546,13 +1569,19 @@ module TMBSH
     end
 
     class ForStatementNode < StatementNode
-      @varnames : ::Array(::String)
+      @varnames : ::Array(StringName)
       @iterable : ValueNode
       @body : StatementBlockNode
 
-      def initialize(varnames : ::Array(::String), iterable : ValueNode, body : StatementBlockNode)
+      def initialize(varnames : ::Array(StringName), iterable : ValueNode, body : StatementBlockNode)
         # body.auto_scope_managment = false
         @varnames = varnames
+        @iterable = iterable
+        @body = body
+      end
+      def initialize(varnames : ::Array(::String), iterable : ValueNode, body : StatementBlockNode)
+        # body.auto_scope_managment = false
+        @varnames = varnames.map {|val| StringName.new(val)}
         @iterable = iterable
         @body = body
       end

@@ -725,7 +725,7 @@ module TMBSH
           condition = parse_condition
           skip_whitespaces_and_newlines_and_semicolons
           block = parse_block(:EndKeyword, :ElseKeyword, :ElifKeyword)
-          if_statement.elsif_bodies << {condition, block, varname}
+          if_statement.elsif_bodies << {condition, block, varname ? StringName.new(varname) : nil}
         end
         # p! token
         if token.kind.else_keyword?

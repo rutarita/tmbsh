@@ -252,10 +252,18 @@ module TMBSH
     end
 
     def get_attribute(name : ::String) : Variant
-      raise TypeError.new("#{self.class} is attributeless")
+      get_attribute(StringName.new(name))
     end
 
     def set_attribute(name : ::String, val : Variant) : Variant
+      set_attribute(StringName.new(name))
+    end
+
+    def get_attribute(name : StringName) : Variant
+      raise TypeError.new("#{self.class} is attributeless")
+    end
+
+    def set_attribute(name : StringName, val : Variant) : Variant
       raise TypeError.new("#{self.class} is attributeless")
     end
 
@@ -2345,12 +2353,12 @@ module TMBSH
       DictionaryIterator.new(@value)
     end
 
-    def get_attribute(name : ::String) : Variant
-      self[String.new(name)]? || NULL
+    def get_attribute(name : StringName) : Variant
+      self[String.new(name.to_s)]? || NULL
     end
 
-    def set_attribute(name : ::String, val : Variant) : Variant
-      self[String.new(name)] = val
+    def set_attribute(name : StringName, val : Variant) : Variant
+      self[String.new(name.to_s)] = val
     end
 
     def truthy? : ::Bool
