@@ -883,7 +883,7 @@ module TMBSH
         str = mem.to_s
         str = str.chomp if @chomp
         var = String.new(str)
-        apply_actions(var, context)
+        # apply_actions(var, context)
       end
 
       private def capture_status(context)
@@ -910,7 +910,7 @@ module TMBSH
       end
 
       def evaluate(context : Context) : Variant
-        unless @async
+        result = unless @async
           capture_depending(context)
         else
           channel = Channel(Variant).new
@@ -920,6 +920,7 @@ module TMBSH
           end
           Promise.new(channel)
         end
+        apply_actions(result, context)
       end
 
       def dont_chomp
